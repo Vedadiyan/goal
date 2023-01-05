@@ -9,10 +9,10 @@ import (
 
 type NEVER *byte
 
-func Send(url IUrl, defaultHeaders IWebHeaderCollection, method Method, request io.ReadCloser, options ...Option) (int, io.ReadCloser, error) {
+func Send(url IUrl, defaultHeaders IWebHeaderCollection, method Method, request io.ReadCloser, options ...Option) (IHttpResponse, error) {
 	rqUrl, err := url.Url()
 	if err != nil {
-		return -1, nil, err
+		return nil, err
 	}
 	headers := defaultHeaders
 	if headers == nil {
@@ -27,9 +27,9 @@ func Send(url IUrl, defaultHeaders IWebHeaderCollection, method Method, request 
 	}
 	response, err := GetHttpClient().Send(context.TODO(), &rq, options...)
 	if err != nil {
-		return -1, nil, err
+		return nil, err
 	}
-	return response.Status(), response.Reader(), nil
+	return response, nil
 }
 
 func Must[TType any](fn func() (TType, error)) TType {

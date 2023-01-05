@@ -121,7 +121,7 @@ func send(httpClient *httpClient, ctx context.Context, httpRequest IHttpReuqest)
 	if err != nil {
 		return nil, err
 	}
-	return &httpResponse{response.StatusCode, response.Body}, nil
+	return &httpResponse{response: *response}, nil
 }
 
 func debugConnectionReuse() *httptrace.ClientTrace {
