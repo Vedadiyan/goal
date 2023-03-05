@@ -2,35 +2,23 @@ package http
 
 import (
 	"context"
-	"errors"
 	"log"
 	"net/http"
 	"net/http/httptrace"
-	"net/url"
 	"sync"
 	"time"
-
-	"github.com/vedadiyan/goal/pkg/cache"
 )
 
 type Option any
 
 type CacheOption int
 
-const (
-	FETCH_OPTION_CACHED CacheOption = 1
-)
-
 var (
 	ConfigureMarshallerMethods func(t any) (MarshallerType, string, any)
 	IsDebug                    bool = false
 	_once                      sync.Once
 	_httpClient                IHttpClient
-	_cachFn                    CacheFn
-	_defaultTTL                time.Duration
 )
-
-type CacheFn func(url *url.URL, key string, value func() (IHttpResponse, error), ttl time.Duration) (IHttpResponse, error)
 
 type IHttpClient interface {
 	Send(ctx context.Context, httpRequest IHttpReuqest, options ...Option) (IHttpResponse, error)
@@ -38,22 +26,6 @@ type IHttpClient interface {
 
 type httpClient struct {
 	httpClient http.Client
-}
-
-func init() {
-	_defaultTTL = time.Second * 30
-	_cachFn = func(url *url.URL, key string, value func() (IHttpResponse, error), ttl time.Duration) (IHttpResponse, error) {
-		cahcedValue, err := cache.Get[IHttpResponse](key)
-		if errors.Is(err, cache.KEY_NOT_FOUND) {
-			res, err := value()
-			if err != nil {
-				return nil, err
-			}
-			cache.AddWithTTL(key, res, ttl)
-			return res, nil
-		}
-		return cahcedValue, nil
-	}
 }
 
 func ConfigureHttpClient(transport *http.Transport, timeout time.Duration) {
@@ -82,20 +54,7 @@ func GetHttpClient() IHttpClient {
 }
 
 func (httpClient httpClient) Send(ctx context.Context, httpRequest IHttpReuqest, options ...Option) (IHttpResponse, error) {
-	if hasCacheOption(FETCH_OPTION_CACHED, options) {
-		return readOrSend(&httpClient, ctx, httpRequest, getTTL(options))
-	}
 	return send(&httpClient, ctx, httpRequest)
-}
-
-func readOrSend(httpClient *httpClient, ctx context.Context, httpRequest IHttpReuqest, ttl time.Duration) (IHttpResponse, error) {
-	hash, err := httpRequest.Hash()
-	if err != nil {
-		return nil, err
-	}
-	return _cachFn(httpRequest.Url(), hash, func() (IHttpResponse, error) {
-		return send(httpClient, ctx, httpRequest)
-	}, ttl)
 }
 
 func send(httpClient *httpClient, ctx context.Context, httpRequest IHttpReuqest) (IHttpResponse, error) {
@@ -131,32 +90,4 @@ func debugConnectionReuse() *httptrace.ClientTrace {
 		},
 	}
 	return clientTrace
-}
-
-func hasCacheOption(option CacheOption, options []Option) bool {
-	for _, item := range options {
-		if value, ok := item.(CacheOption); ok {
-			if value&option == option {
-				return true
-			}
-		}
-	}
-	return false
-}
-
-func getTTL(options []Option) time.Duration {
-	for _, item := range options {
-		if value, ok := item.(time.Duration); ok {
-			return value
-		}
-	}
-	return _defaultTTL
-}
-
-func RegisterCache(cacheFn CacheFn) {
-	_cachFn = cacheFn
-}
-
-func ConfigureDefaultCacheTTL(defaultTTL time.Duration) {
-	_defaultTTL = defaultTTL
 }
