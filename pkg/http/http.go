@@ -14,10 +14,9 @@ type Option any
 type CacheOption int
 
 var (
-	ConfigureMarshallerMethods func(t any) (MarshallerType, string, any)
-	IsDebug                    bool = false
-	_once                      sync.Once
-	_httpClient                IHttpClient
+	IsDebug     bool = false
+	_once       sync.Once
+	_httpClient IHttpClient
 )
 
 type IHttpClient interface {
