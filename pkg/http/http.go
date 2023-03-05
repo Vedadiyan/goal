@@ -11,8 +11,6 @@ import (
 
 type Option any
 
-type CacheOption int
-
 var (
 	IsDebug     bool = false
 	_once       sync.Once
@@ -20,7 +18,7 @@ var (
 )
 
 type IHttpClient interface {
-	Send(ctx context.Context, httpRequest IHttpReuqest, options ...Option) (IHttpResponse, error)
+	Send(ctx context.Context, httpRequest IHttpReuqest, options ...Option) (res IHttpResponse, err error)
 }
 
 type httpClient struct {
@@ -52,14 +50,13 @@ func GetHttpClient() IHttpClient {
 	return _httpClient
 }
 
-func (httpClient httpClient) Send(ctx context.Context, httpRequest IHttpReuqest, options ...Option) (IHttpResponse, error) {
+func (httpClient httpClient) Send(ctx context.Context, httpRequest IHttpReuqest, options ...Option) (res IHttpResponse, err error) {
 	return send(&httpClient, ctx, httpRequest)
 }
 
-func send(httpClient *httpClient, ctx context.Context, httpRequest IHttpReuqest) (IHttpResponse, error) {
+func send(httpClient *httpClient, ctx context.Context, httpRequest IHttpReuqest) (res IHttpResponse, err error) {
 	url := httpRequest.Url()
 	var request *http.Request
-	var err error
 	if !IsDebug {
 		request, err = http.NewRequestWithContext(ctx, string(httpRequest.Method()), url.String(), httpRequest.Reader())
 	} else {
@@ -68,7 +65,9 @@ func send(httpClient *httpClient, ctx context.Context, httpRequest IHttpReuqest)
 	if err != nil {
 		return nil, err
 	}
-	defer request.Body.Close()
+	defer func() {
+		err = request.Body.Close()
+	}()
 	if httpRequest.ContentType() != "" {
 		request.Header.Add("Content-Type", httpRequest.ContentType())
 	}

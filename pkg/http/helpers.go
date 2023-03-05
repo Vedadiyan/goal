@@ -9,7 +9,7 @@ import (
 
 type NEVER *byte
 
-func Send(url IUrl, defaultHeaders IWebHeaderCollection, method Method, request io.ReadCloser, options ...Option) (IHttpResponse, error) {
+func Send(url IUrl, defaultHeaders IWebHeaderCollection, method Method, request io.ReadCloser, options ...Option) (res IHttpResponse, err error) {
 	rqUrl, err := url.Url()
 	if err != nil {
 		return nil, err
