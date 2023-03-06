@@ -1,6 +1,8 @@
 package config_auto
 
 import (
+	"context"
+
 	"github.com/vedadiyan/goal/pkg/config"
 	config_etcd "github.com/vedadiyan/goal/pkg/config/etcd"
 )
@@ -46,9 +48,8 @@ func (o Object) Inititialize(value any) error {
 	return config.INVALID_OBJECT
 }
 
-func Bootstrap(url string, key string, initializers ...IInitializer) error {
-	etcdCnfxReader := config_etcd.New(url, key)
-	etcdCnfx, err := etcdCnfxReader.ReadConfig()
+func Bootstrap(url string, initializers ...IInitializer) error {
+	etcdCnfxReader, err := config_etcd.NewClient([]string{url})
 	if err != nil {
 		return err
 	}
@@ -56,6 +57,10 @@ func Bootstrap(url string, key string, initializers ...IInitializer) error {
 		switch t := initializer.(type) {
 		case String:
 			{
+				etcdCnfx, err := etcdCnfxReader.ReadKey(context.TODO(), t.Key)
+				if err != nil {
+					return err
+				}
 				value, err := etcdCnfx.GetString(t.Key)
 				if err != nil {
 					return err
@@ -69,6 +74,10 @@ func Bootstrap(url string, key string, initializers ...IInitializer) error {
 			}
 		case Object:
 			{
+				etcdCnfx, err := etcdCnfxReader.ReadKey(context.TODO(), t.Key)
+				if err != nil {
+					return err
+				}
 				value, err := etcdCnfx.GetObject(t.Key)
 				if err != nil {
 					return err
@@ -82,5 +91,5 @@ func Bootstrap(url string, key string, initializers ...IInitializer) error {
 			}
 		}
 	}
-	return nil
+	return etcdCnfxReader.Close()
 }

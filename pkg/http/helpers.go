@@ -7,9 +7,7 @@ import (
 	"log"
 )
 
-type NEVER *byte
-
-func Send(url IUrl, defaultHeaders IWebHeaderCollection, method Method, request io.ReadCloser, options ...Option) (IHttpResponse, error) {
+func Send(url IUrl, defaultHeaders IWebHeaderCollection, method Method, request io.ReadCloser) (res IHttpResponse, err error) {
 	rqUrl, err := url.Url()
 	if err != nil {
 		return nil, err
@@ -25,7 +23,7 @@ func Send(url IUrl, defaultHeaders IWebHeaderCollection, method Method, request 
 		method:      method,
 		reader:      request,
 	}
-	response, err := GetHttpClient().Send(context.TODO(), &rq, options...)
+	response, err := GetHttpClient().Send(context.TODO(), &rq)
 	if err != nil {
 		return nil, err
 	}
@@ -38,10 +36,6 @@ func Must[TType any](fn func() (TType, error)) TType {
 		log.Fatalln(err)
 	}
 	return res
-}
-
-func Never() NEVER {
-	return nil
 }
 
 func Nil() io.ReadCloser {
