@@ -9,8 +9,6 @@ import (
 	"time"
 )
 
-type Option any
-
 var (
 	IsDebug     bool = false
 	_once       sync.Once
@@ -18,7 +16,7 @@ var (
 )
 
 type IHttpClient interface {
-	Send(ctx context.Context, httpRequest IHttpReuqest, options ...Option) (res IHttpResponse, err error)
+	Send(ctx context.Context, httpRequest IHttpReuqest) (res IHttpResponse, err error)
 }
 
 type httpClient struct {
@@ -50,7 +48,7 @@ func GetHttpClient() IHttpClient {
 	return _httpClient
 }
 
-func (httpClient httpClient) Send(ctx context.Context, httpRequest IHttpReuqest, options ...Option) (res IHttpResponse, err error) {
+func (httpClient httpClient) Send(ctx context.Context, httpRequest IHttpReuqest) (res IHttpResponse, err error) {
 	return send(&httpClient, ctx, httpRequest)
 }
 
