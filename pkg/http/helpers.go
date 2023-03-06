@@ -7,8 +7,6 @@ import (
 	"log"
 )
 
-type NEVER *byte
-
 func Send(url IUrl, defaultHeaders IWebHeaderCollection, method Method, request io.ReadCloser) (res IHttpResponse, err error) {
 	rqUrl, err := url.Url()
 	if err != nil {
@@ -38,10 +36,6 @@ func Must[TType any](fn func() (TType, error)) TType {
 		log.Fatalln(err)
 	}
 	return res
-}
-
-func Never() NEVER {
-	return nil
 }
 
 func Nil() io.ReadCloser {
