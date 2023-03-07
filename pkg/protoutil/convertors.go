@@ -5,9 +5,12 @@ import (
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
-func FromMap[T proto.Message](data map[string]any) (T, error) {
+func FromMap[T any](data map[string]any) (T, error) {
 	message := new(T)
-	err := _next(data, nil, -1, message)
+	if _, ok := any(message).(proto.Message); !ok {
+		return *message, nil
+	}
+	err := _next(data, nil, -1, any(message).(proto.Message))
 	if err != nil {
 		return *message, err
 	}
@@ -34,7 +37,7 @@ func _setList(data []any, fields protoreflect.FieldDescriptors, fd protoreflect.
 		case map[string]any:
 			{
 				ls := ref.AppendMutable().Message()
-				err := _next(t2, fd, i, ls.Interface())
+				err := _next(t2, f, i, ls.Interface())
 				if err != nil {
 					return err
 				}
@@ -42,7 +45,7 @@ func _setList(data []any, fields protoreflect.FieldDescriptors, fd protoreflect.
 			}
 		default:
 			{
-				ref.Set(i, protoreflect.ValueOf(data[i]))
+				ref.Append(protoreflect.ValueOf(data[i]))
 			}
 		}
 	}
@@ -79,7 +82,7 @@ func _setOneOf(value any, field protoreflect.FieldDescriptor, name string, messa
 	switch f.Kind() {
 	case protoreflect.MessageKind:
 		{
-			err := _next(value, f, -1, message.ProtoReflect().Mutable(f).Message().New().Interface())
+			err := _next(value.(map[string]any), f, -1, message.ProtoReflect().Mutable(f).Message().New().Interface())
 			if err != nil {
 				return err
 			}
@@ -108,14 +111,9 @@ func _setValue(value any, fields protoreflect.FieldDescriptors, name string, mes
 	return nil
 }
 
-func _next(data any, fd protoreflect.FieldDescriptor, index int, _message any) error {
-	mapper, ok := data.(map[string]any)
-	if !ok {
-		_set(data, fd, _message.(proto.Message))
-	}
-	message := _message.(proto.Message)
+func _next(data map[string]any, fd protoreflect.FieldDescriptor, index int, message proto.Message) error {
 	fields := message.ProtoReflect().Descriptor().Fields()
-	for key, value := range mapper {
+	for key, value := range data {
 		switch t := value.(type) {
 		case map[string]any:
 			{
