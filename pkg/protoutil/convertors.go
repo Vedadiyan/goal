@@ -5,6 +5,146 @@ import (
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
+func FromMap[T proto.Message](data map[string]any) (T, error) {
+	message := new(T)
+	err := _next(data, nil, -1, message)
+	if err != nil {
+		return *message, err
+	}
+	return *message, nil
+}
+
+func _set(data any, fd protoreflect.FieldDescriptor, message proto.Message) {
+	if !fd.IsList() {
+		message.ProtoReflect().Set(fd, protoreflect.ValueOf(data))
+		return
+	}
+	ls := message.(protoreflect.List)
+	ls.Append(protoreflect.ValueOf(data))
+}
+
+func _setList(data []any, fields protoreflect.FieldDescriptors, fd protoreflect.FieldDescriptor, name string, message proto.Message) error {
+	var f protoreflect.FieldDescriptor
+	for i := 0; i < fields.Len(); i++ {
+		_f := fields.Get(i)
+		if Or(_f.JSONName(), _f.TextName()) == name {
+			f = _f
+		}
+	}
+	if f == nil {
+		return nil
+	}
+	ref := message.ProtoReflect().Mutable(f).List()
+	for i := 0; i < len(data); i++ {
+		switch t2 := data[i].(type) {
+		case map[string]any:
+			{
+				ls := ref.AppendMutable().Message()
+				err := _next(t2, fd, i, ls.Interface())
+				if err != nil {
+					return err
+				}
+				ref.Set(i, protoreflect.ValueOfMessage(ls))
+			}
+		default:
+			{
+				err := _next(t2, f, i, ref)
+				if err != nil {
+					return err
+				}
+			}
+		}
+
+		message.ProtoReflect().Set(f, protoreflect.ValueOfList(ref))
+	}
+	return nil
+}
+
+func _getField(fields protoreflect.FieldDescriptors, name string) protoreflect.FieldDescriptor {
+	for i := 0; i < fields.Len(); i++ {
+		f := fields.Get(i)
+		if Or(f.JSONName(), f.TextName()) == name {
+			return f
+		}
+	}
+	return nil
+}
+
+func _setObject(data map[string]any, fields protoreflect.FieldDescriptors, name string, message proto.Message) error {
+	f := _getField(fields, name)
+	if f == nil {
+		return nil
+	}
+	ref := message.ProtoReflect().Mutable(f).Message()
+	err := _next(data, f, -1, ref.Interface())
+	if err != nil {
+		return err
+	}
+	_set(ref, f, message)
+	return nil
+}
+
+func _setValue(value any, fields protoreflect.FieldDescriptors, name string, message proto.Message) error {
+	f := _getField(fields, name)
+	if f == nil {
+		return nil
+	}
+	if f.ContainingOneof() != nil {
+		f = f.ContainingOneof().Fields().ByName(protoreflect.Name(name))
+		switch f.Kind() {
+		case protoreflect.MessageKind:
+			{
+				err := _next(value, f, -1, message.ProtoReflect().Mutable(f).Message().New().Interface())
+				if err != nil {
+					return err
+				}
+			}
+		default:
+			{
+				message.ProtoReflect().Set(f, protoreflect.ValueOf(value))
+			}
+		}
+		return nil
+	}
+	message.ProtoReflect().Set(f, protoreflect.ValueOf(value))
+	return nil
+}
+
+func _next(data any, fd protoreflect.FieldDescriptor, index int, _message any) error {
+	mapper, ok := data.(map[string]any)
+	if !ok {
+		_set(data, fd, _message.(proto.Message))
+	}
+	message := _message.(proto.Message)
+	fields := message.ProtoReflect().Descriptor().Fields()
+	for key, value := range mapper {
+		switch t := value.(type) {
+		case map[string]any:
+			{
+				err := _setObject(t, fields, key, message)
+				if err != nil {
+					return err
+				}
+			}
+		case []any:
+			{
+				err := _setList(t, fields, fd, key, message)
+				if err != nil {
+					return err
+				}
+			}
+		default:
+			{
+				err := _setValue(value, fields, key, message)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+	return nil
+}
+
 func ToMap(data proto.Message) (map[string]any, error) {
 	mapper := make(map[string]any)
 	err := next(data, "", mapper)
