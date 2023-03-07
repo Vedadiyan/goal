@@ -23,15 +23,14 @@ const (
 	CRITICAL LogLevels = "critical"
 )
 
-type IExecutionContext[T any] interface {
-	Start(params ...any)
-	Interrupt(err *T) (*T, error)
-	Error(err error) (*T, error)
-	Complete(value *T) (*T, error)
-	Recover()
+type IExecutionContext interface {
+	Warn(data any)
+	Info(data any)
+	Error(err error)
+	Close()
 }
 
-type ExecutionContext[T any] struct {
+type ExecutionContext struct {
 	id     int64
 	origin string
 	start  time.Time
@@ -65,24 +64,25 @@ func UseInfluxDbWithFailover(dsn string, authToken string, org string, bucket st
 	return nil
 }
 
-func New[T any](origin string) IExecutionContext[T] {
-	executionContext := &ExecutionContext[T]{}
+func New(origin string, params ...any) IExecutionContext {
+	executionContext := &ExecutionContext{}
 	executionContext.origin = origin
 	executionContext.logger = _logger
+	executionContext.Start(params...)
 	return executionContext
 }
 
-func NewWithLogger[T any](logger Logger) IExecutionContext[T] {
-	executionContext := &ExecutionContext[T]{}
+func NewWithLogger(logger Logger) IExecutionContext {
+	executionContext := &ExecutionContext{}
 	executionContext.logger = logger
 	return executionContext
 }
 
-func (e *ExecutionContext[T]) Start(params ...any) {
+func (e *ExecutionContext) Start(params ...any) {
 	e.start = time.Now()
 	e.id = time.Now().UnixNano()
 	info := make(map[string]any)
-	info["status"] = "Executing"
+	info["status"] = "Started"
 	info["params"] = params
 	e.logger(INFO, fmt.Sprintf("%d", e.id), info)
 	for _, middleware := range _middleware {
@@ -90,19 +90,7 @@ func (e *ExecutionContext[T]) Start(params ...any) {
 	}
 }
 
-func (e *ExecutionContext[T]) Interrupt(err *T) (*T, error) {
-	e.end = time.Now()
-	info := make(map[string]any)
-	info["status"] = "Interuppted"
-	info["reason"] = err
-	e.logger(WARN, fmt.Sprintf("%d", e.id), info)
-	for _, middleware := range _middleware {
-		middleware(fmt.Sprintf("%d", e.id), e.origin, WARN, info)
-	}
-	return err, nil
-}
-
-func (e *ExecutionContext[T]) Error(err error) (*T, error) {
+func (e *ExecutionContext) Error(err error) {
 	e.end = time.Now()
 	info := make(map[string]any)
 	info["status"] = "Errored"
@@ -111,24 +99,37 @@ func (e *ExecutionContext[T]) Error(err error) (*T, error) {
 	for _, middleware := range _middleware {
 		middleware(fmt.Sprintf("%d", e.id), e.origin, ERROR, info)
 	}
-	return nil, err
 }
 
-func (e *ExecutionContext[T]) Complete(value *T) (*T, error) {
+func (e *ExecutionContext) Info(data any) {
 	e.end = time.Now()
 	info := make(map[string]any)
-	info["status"] = "Executed"
-	info["benchmark"] = e.end.Sub(e.start).Nanoseconds()
+	info["status"] = "Executing"
+	if data != nil {
+		info["data"] = data
+	}
 	e.logger(INFO, fmt.Sprintf("%d", e.id), info)
 	for _, middleware := range _middleware {
 		middleware(fmt.Sprintf("%d", e.id), e.origin, INFO, info)
 	}
-	return value, nil
 }
 
-func (e *ExecutionContext[T]) Recover() {
+func (e *ExecutionContext) Warn(data any) {
+	e.end = time.Now()
+	info := make(map[string]any)
+	info["status"] = "Executing"
+	if data != nil {
+		info["data"] = data
+	}
+	e.logger(INFO, fmt.Sprintf("%d", e.id), info)
+	for _, middleware := range _middleware {
+		middleware(fmt.Sprintf("%d", e.id), e.origin, WARN, info)
+	}
+}
+
+func (e *ExecutionContext) Close() {
+	e.end = time.Now()
 	if recovered := recover(); recovered != nil {
-		e.end = time.Now()
 		info := make(map[string]any)
 		info["status"] = "Recovered"
 		info["error"] = recovered
@@ -136,6 +137,14 @@ func (e *ExecutionContext[T]) Recover() {
 		for _, middleware := range _middleware {
 			middleware(fmt.Sprintf("%d", e.id), e.origin, CRITICAL, info)
 		}
+	}
+	e.end = time.Now()
+	info := make(map[string]any)
+	info["status"] = "Ended"
+	info["benchmark"] = e.end.Sub(e.start).Nanoseconds()
+	e.logger(INFO, fmt.Sprintf("%d", e.id), info)
+	for _, middleware := range _middleware {
+		middleware(fmt.Sprintf("%d", e.id), e.origin, INFO, info)
 	}
 }
 
