@@ -24,13 +24,7 @@ func _set(data any, fd protoreflect.FieldDescriptor, message proto.Message) {
 }
 
 func _setList(data []any, fields protoreflect.FieldDescriptors, fd protoreflect.FieldDescriptor, name string, message proto.Message) error {
-	var f protoreflect.FieldDescriptor
-	for i := 0; i < fields.Len(); i++ {
-		_f := fields.Get(i)
-		if Or(_f.JSONName(), _f.TextName()) == name {
-			f = _f
-		}
-	}
+	f := _getField(fields, name)
 	if f == nil {
 		return nil
 	}
@@ -48,15 +42,11 @@ func _setList(data []any, fields protoreflect.FieldDescriptors, fd protoreflect.
 			}
 		default:
 			{
-				err := _next(t2, f, i, ref)
-				if err != nil {
-					return err
-				}
+				ref.Set(i, protoreflect.ValueOf(data[i]))
 			}
 		}
-
-		message.ProtoReflect().Set(f, protoreflect.ValueOfList(ref))
 	}
+	message.ProtoReflect().Set(f, protoreflect.ValueOfList(ref))
 	return nil
 }
 
@@ -84,25 +74,33 @@ func _setObject(data map[string]any, fields protoreflect.FieldDescriptors, name 
 	return nil
 }
 
+func _setOneOf(value any, field protoreflect.FieldDescriptor, name string, message proto.Message) error {
+	f := field.ContainingOneof().Fields().ByName(protoreflect.Name(name))
+	switch f.Kind() {
+	case protoreflect.MessageKind:
+		{
+			err := _next(value, f, -1, message.ProtoReflect().Mutable(f).Message().New().Interface())
+			if err != nil {
+				return err
+			}
+		}
+	default:
+		{
+			message.ProtoReflect().Set(f, protoreflect.ValueOf(value))
+		}
+	}
+	return nil
+}
+
 func _setValue(value any, fields protoreflect.FieldDescriptors, name string, message proto.Message) error {
 	f := _getField(fields, name)
 	if f == nil {
 		return nil
 	}
 	if f.ContainingOneof() != nil {
-		f = f.ContainingOneof().Fields().ByName(protoreflect.Name(name))
-		switch f.Kind() {
-		case protoreflect.MessageKind:
-			{
-				err := _next(value, f, -1, message.ProtoReflect().Mutable(f).Message().New().Interface())
-				if err != nil {
-					return err
-				}
-			}
-		default:
-			{
-				message.ProtoReflect().Set(f, protoreflect.ValueOf(value))
-			}
+		err := _setOneOf(value, f, name, message)
+		if err != nil {
+			return nil
 		}
 		return nil
 	}
