@@ -7,20 +7,22 @@ import (
 	config_etcd "github.com/vedadiyan/goal/pkg/config/etcd"
 )
 
-type IInitializer interface {
-	Inititialize(value any) error
+type Initializer interface {
+	Init(value any) error
 }
 
 type String struct {
-	Key  string
-	Init func(value string)
+	Key   string
+	Watch bool
+	CB    func(value string)
 }
 
 type KeyValue map[string]any
 
 type Object struct {
-	Key  string
-	Init func(value KeyValue)
+	Key   string
+	Watch bool
+	CB    func(value KeyValue)
 }
 
 func (k KeyValue) GetStringValue(key string) (string, error) {
@@ -33,22 +35,22 @@ func (k KeyValue) GetStringValue(key string) (string, error) {
 	return "", config.KEY_NOT_FOUND
 }
 
-func (s String) Inititialize(value any) error {
+func (s String) Init(value any) error {
 	if str, ok := value.(string); ok {
-		s.Init(str)
+		s.CB(str)
 		return nil
 	}
 	return config.INVALID_OBJECT
 }
-func (o Object) Inititialize(value any) error {
+func (o Object) Init(value any) error {
 	if keyValue, ok := value.(map[string]any); ok {
-		o.Init(keyValue)
+		o.CB(keyValue)
 		return nil
 	}
 	return config.INVALID_OBJECT
 }
 
-func Bootstrap(url string, initializers ...IInitializer) error {
+func Bootstrap(url string, initializers ...Initializer) error {
 	etcdCnfxReader, err := config_etcd.NewClient([]string{url})
 	if err != nil {
 		return err
@@ -65,10 +67,18 @@ func Bootstrap(url string, initializers ...IInitializer) error {
 				if err != nil {
 					return err
 				}
-				if t.Init != nil {
-					err := t.Inititialize(value)
+				if t.CB != nil {
+					err := t.Init(value)
 					if err != nil {
 						return err
+					}
+					if t.Watch {
+						etcdCnfxReader.Watch(context.TODO(), t.Key, func(etcdValue *config_etcd.EtcdValue, err error) {
+							if err != nil {
+								return
+							}
+							t.Init(value)
+						})
 					}
 				}
 			}
@@ -82,10 +92,18 @@ func Bootstrap(url string, initializers ...IInitializer) error {
 				if err != nil {
 					return err
 				}
-				if t.Init != nil {
-					err := t.Inititialize(value)
+				if t.CB != nil {
+					err := t.Init(value)
 					if err != nil {
 						return err
+					}
+					if t.Watch {
+						etcdCnfxReader.Watch(context.TODO(), t.Key, func(etcdValue *config_etcd.EtcdValue, err error) {
+							if err != nil {
+								return
+							}
+							t.Init(value)
+						})
 					}
 				}
 			}
