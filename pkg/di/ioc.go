@@ -97,20 +97,15 @@ func RefreshSinletonWithName[T any](name string, service func() (instance T, err
 
 func OnSingletonRefresh[T any](cb func(event Events)) {
 	name := nameOf[T]()
+	OnSingletonRefreshWithName(name, cb)
+}
+
+func OnSingletonRefreshWithName(name string, cb func(event Events)) {
 	value, ok := _singletonRefresh.Load(name)
 	if !ok {
 		value = make([]func(event Events), 0)
 	}
 	value = append(value.([]func(event Events)), cb)
-	_singletonRefresh.Store(name, value)
-}
-
-func OnSingletonRefreshWithName(name string, cb func()) {
-	value, ok := _singletonRefresh.Load(name)
-	if !ok {
-		value = make([]func(), 0)
-	}
-	value = append(value.([]func()), cb)
 	_singletonRefresh.Store(name, value)
 }
 
