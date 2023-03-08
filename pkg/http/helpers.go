@@ -5,12 +5,18 @@ import (
 	"context"
 	"io"
 	"log"
+	"net/url"
+	"strings"
 )
 
-func Send(url IUrl, defaultHeaders IWebHeaderCollection, method Method, request io.ReadCloser) (res IHttpResponse, err error) {
+type JSON string
+type XML string
+type URLEncoded = url.Values
+
+func Send(url IUrl, defaultHeaders IWebHeaderCollection, method Method, request any) (res IHttpResponse, err error) {
 	return SendWithContext(context.TODO(), url, defaultHeaders, method, request)
 }
-func SendWithContext(ctx context.Context, url IUrl, defaultHeaders IWebHeaderCollection, method Method, request io.ReadCloser) (IHttpResponse, error) {
+func SendWithContext(ctx context.Context, url IUrl, defaultHeaders IWebHeaderCollection, method Method, request any) (IHttpResponse, error) {
 	rqUrl, err := url.Url()
 	if err != nil {
 		return nil, err
@@ -19,12 +25,13 @@ func SendWithContext(ctx context.Context, url IUrl, defaultHeaders IWebHeaderCol
 	if headers == nil {
 		headers = NewWebHeaderCollection()
 	}
+	rqType, readCloser := GetRequest(request)
 	rq := httpRequest{
 		url:         rqUrl,
-		contentType: headers.GetOrDefault("Content-Type", "text/plain"),
+		contentType: rqType,
 		headers:     headers,
 		method:      method,
-		reader:      request,
+		reader:      readCloser,
 	}
 	response, err := GetHttpClient().Send(ctx, &rq)
 	if err != nil {
@@ -43,4 +50,30 @@ func Must[TType any](fn func() (TType, error)) TType {
 
 func Nil() io.ReadCloser {
 	return io.NopCloser(bytes.NewReader([]byte{}))
+}
+
+func GetRequest(request any) (string, io.ReadCloser) {
+	switch t := request.(type) {
+	case string:
+		{
+			return "text/plain", io.NopCloser(strings.NewReader(t))
+		}
+	case JSON:
+		{
+			return "application/json", io.NopCloser(strings.NewReader(string(t)))
+		}
+	case XML:
+		{
+			return "text/xml", io.NopCloser(strings.NewReader(string(t)))
+		}
+	case URLEncoded:
+		{
+			return "application/x-www-form-urlencoded", io.NopCloser(strings.NewReader(t.Encode()))
+		}
+	case []byte:
+		{
+			return "application/octet-stream", io.NopCloser(bytes.NewReader(t))
+		}
+	}
+	return "", nil
 }
