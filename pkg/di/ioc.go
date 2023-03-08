@@ -6,6 +6,8 @@ import (
 	"time"
 )
 
+type Events int
+
 type LifeCycles int
 
 const (
@@ -14,9 +16,17 @@ const (
 	SCOPED
 )
 
-var contextTypes sync.Map
-var context sync.Map
-var scopedContext sync.Map
+const (
+	REFRESHING Events = iota
+	REFRESHED
+)
+
+var (
+	_singletonRefresh sync.Map
+	_contextTypes     sync.Map
+	_context          sync.Map
+	_scopedContext    sync.Map
+)
 
 type options struct {
 	scopeId uint64
@@ -47,18 +57,61 @@ func NewOptions(scopeId uint64, ttl time.Duration) *options {
 
 func AddSinleton[T any](service func() (instance T, err error)) error {
 	name := nameOf[T]()
-	return AddScopedWithName(name, service)
+	return AddSinletonWithName(name, service)
 }
 
 func AddSinletonWithName[T any](name string, service func() (instance T, err error)) error {
 	singleton := singleton[T]{
 		ig: service,
 	}
-	if _, ok := context.LoadOrStore(name, &singleton); ok {
+	if _, ok := _context.LoadOrStore(name, &singleton); ok {
 		return objectAlreadyExistsError(name)
 	}
-	contextTypes.Store(name, SINGLETON)
+	_contextTypes.Store(name, SINGLETON)
 	return nil
+}
+
+func RefreshSinleton[T any](service func() (instance T, err error)) error {
+	name := nameOf[T]()
+	return RefreshSinletonWithName(name, service)
+}
+
+func RefreshSinletonWithName[T any](name string, service func() (instance T, err error)) error {
+	values, ok := _singletonRefresh.Load(name)
+	if ok {
+		for _, value := range values.([]func(event Events)) {
+			value(REFRESHING)
+		}
+	}
+	singleton := singleton[T]{
+		ig: service,
+	}
+	_context.Store(name, &singleton)
+	if ok {
+		for _, value := range values.([]func(event Events)) {
+			value(REFRESHED)
+		}
+	}
+	return nil
+}
+
+func OnSingletonRefresh[T any](cb func(event Events)) {
+	name := nameOf[T]()
+	value, ok := _singletonRefresh.Load(name)
+	if !ok {
+		value = make([]func(event Events), 0)
+	}
+	value = append(value.([]func(event Events)), cb)
+	_singletonRefresh.Store(name, value)
+}
+
+func OnSingletonRefreshWithName(name string, cb func()) {
+	value, ok := _singletonRefresh.Load(name)
+	if !ok {
+		value = make([]func(), 0)
+	}
+	value = append(value.([]func()), cb)
+	_singletonRefresh.Store(name, value)
 }
 
 func AddTransient[T any](service func() (instance T, err error)) error {
@@ -67,11 +120,11 @@ func AddTransient[T any](service func() (instance T, err error)) error {
 }
 
 func AddTransientWithName[T any](name string, service func() (instance T, err error)) error {
-	if _, ok := context.Load(name); ok {
+	if _, ok := _context.Load(name); ok {
 		return objectAlreadyExistsError(name)
 	}
-	context.Store(name, service)
-	contextTypes.Store(name, TRANSIENT)
+	_context.Store(name, service)
+	_contextTypes.Store(name, TRANSIENT)
 	return nil
 }
 
@@ -81,10 +134,10 @@ func AddScoped[T any](service func() (instance T, err error)) error {
 }
 
 func AddScopedWithName[T any](name string, service func() (instance T, err error)) error {
-	if _, ok := context.LoadOrStore(name, service); ok {
+	if _, ok := _context.LoadOrStore(name, service); ok {
 		return objectAlreadyExistsError(name)
 	}
-	contextTypes.Store(name, SCOPED)
+	_contextTypes.Store(name, SCOPED)
 	return nil
 }
 
@@ -107,11 +160,11 @@ func Resolve[T any](options *options) (instance *T, err error) {
 }
 
 func ResolveWithName[T any](name string, options *options) (instance *T, err error) {
-	lifeCycle, ok := contextTypes.Load(name)
+	lifeCycle, ok := _contextTypes.Load(name)
 	if !ok {
 		return nil, objectNotFoundError(name)
 	}
-	object, ok := context.Load(name)
+	object, ok := _context.Load(name)
 	if !ok {
 		return nil, objectNotFoundError(name)
 	}
@@ -149,7 +202,7 @@ func resolveScoped[T any](options *options, object any, name string) (instance *
 	if options == nil {
 		return nil, missingRequiredParameter("Options")
 	}
-	scopedValue, ok := scopedContext.Load(options.scopeId)
+	scopedValue, ok := _scopedContext.Load(options.scopeId)
 	if ok {
 		if value, ok := scopedValue.(*T); ok {
 			return value, nil
@@ -161,9 +214,9 @@ func resolveScoped[T any](options *options, object any, name string) (instance *
 		return nil, invalidCastError(name)
 	}
 	inst, err := value()
-	scopedContext.Store(options.scopeId, &inst)
+	_scopedContext.Store(options.scopeId, &inst)
 	time.AfterFunc(options.ttl, func() {
-		scopedContext.Delete(options.scopeId)
+		_scopedContext.Delete(options.scopeId)
 	})
 	return &inst, err
 }
@@ -174,7 +227,7 @@ func nameOf[T any]() string {
 }
 
 func init() {
-	contextTypes = sync.Map{}
-	context = sync.Map{}
-	scopedContext = sync.Map{}
+	_contextTypes = sync.Map{}
+	_context = sync.Map{}
+	_scopedContext = sync.Map{}
 }
