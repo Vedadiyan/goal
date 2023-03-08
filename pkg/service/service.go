@@ -21,6 +21,7 @@ const (
 
 type Service interface {
 	Configure() error
+	Init()
 	Start() error
 	GetState() States
 	SetState(state States)
@@ -30,6 +31,7 @@ type Service interface {
 
 func Bootstrapper(services ...Service) {
 	for _, service := range services {
+		service.Init()
 		service.Configure()
 		service.Start()
 		service.SetState(STARTED)
