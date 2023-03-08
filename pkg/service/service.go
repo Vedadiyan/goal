@@ -22,6 +22,8 @@ const (
 	RELOADED
 )
 
+var states sync.Map
+
 type Service interface {
 	Configure(bool) error
 	HealthCheck()
@@ -31,55 +33,8 @@ type Service interface {
 }
 
 func Bootstrapper(services ...Service) {
-	var states sync.Map
 	for _, service := range services {
-		service.Configure(false)
-		state := service.Start()
-		if <-state != RUNNING {
-			continue
-		}
-		states.Store(service, RUNNING)
-		go func(service Service) {
-		LOOP:
-			for value := range state {
-				switch value {
-				case HEALTH_CHECK:
-					{
-						service.HealthCheck()
-					}
-				case ERRORED:
-					{
-						states.Store(service, ERRORED)
-						break LOOP
-					}
-				}
-			}
-		}(service)
-		go func(service Service) {
-			for {
-				value, ok := states.Load(service)
-				if !ok || value.(States) > RUNNING {
-					break
-				}
-				select {
-				case reloadState := <-service.Reload():
-					{
-						switch reloadState {
-						case RELOADING:
-							{
-								service.Stop()
-							}
-						case RELOADED:
-							{
-								service.Configure(true)
-								service.Start()
-							}
-						}
-					}
-				case <-time.After(time.Second):
-				}
-			}
-		}(service)
+		starter(service)
 	}
 	runtime.WaitForInterrupt(func() {
 		for _, service := range services {
@@ -87,4 +42,49 @@ func Bootstrapper(services ...Service) {
 			service.Stop()
 		}
 	})
+}
+
+func starter(service Service) {
+	service.Configure(false)
+	state := service.Start()
+	if <-state != RUNNING {
+		return
+	}
+	states.Store(service, RUNNING)
+	go func(service Service) {
+	LOOP:
+		for {
+			select {
+			case value := <-state:
+				{
+					switch value {
+					case HEALTH_CHECK:
+						{
+							service.HealthCheck()
+						}
+					case ERRORED:
+						{
+							states.Store(service, ERRORED)
+							break LOOP
+						}
+					}
+				}
+			case value := <-service.Reload():
+				{
+					switch value {
+					case RELOADING:
+						{
+							service.Stop()
+						}
+					case RELOADED:
+						{
+							service.Configure(true)
+							state = service.Start()
+						}
+					}
+				}
+			case <-time.After(time.Second):
+			}
+		}
+	}(service)
 }
