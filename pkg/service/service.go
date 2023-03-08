@@ -1,6 +1,7 @@
 package service
 
 import (
+	"sync"
 	"time"
 
 	"github.com/vedadiyan/goal/pkg/runtime"
@@ -20,23 +21,24 @@ const (
 )
 
 type Service interface {
-	Configure() error
-	Watch()
+	Configure(bool) error
 	Start() error
-	GetState() States
-	SetState(state States)
 	Stop() error
 	Reload() <-chan ReloadStates
 }
 
 func Bootstrapper(services ...Service) {
+	var states sync.Map
 	for _, service := range services {
-		service.Watch()
-		service.Configure()
+		service.Configure(false)
 		service.Start()
-		service.SetState(STARTED)
+		states.Store(service, STARTED)
 		go func(service Service) {
-			for service.GetState() == STARTED {
+			for {
+				value, ok := states.Load(service)
+				if !ok || value.(States) == STOPPED {
+					break
+				}
 				select {
 				case reloadState := <-service.Reload():
 					{
@@ -47,7 +49,7 @@ func Bootstrapper(services ...Service) {
 							}
 						case RELOADED:
 							{
-								service.Configure()
+								service.Configure(true)
 								service.Start()
 							}
 						}
@@ -59,7 +61,7 @@ func Bootstrapper(services ...Service) {
 	}
 	runtime.WaitForInterrupt(func() {
 		for _, service := range services {
-			service.SetState(STOPPED)
+			states.Store(service, STOPPED)
 			service.Stop()
 		}
 	})
