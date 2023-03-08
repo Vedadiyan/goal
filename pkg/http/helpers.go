@@ -29,7 +29,7 @@ func Send(url IUrl, defaultHeaders IWebHeaderCollection, method Method, request 
 	}
 	return response, nil
 }
-func SendWithContext(ctx context.Context, url IUrl, defaultHeaders IWebHeaderCollection, method Method, request io.ReadCloser, options ...Option) (IHttpResponse, error) {
+func SendWithContext(ctx context.Context, url IUrl, defaultHeaders IWebHeaderCollection, method Method, request io.ReadCloser) (IHttpResponse, error) {
 	rqUrl, err := url.Url()
 	if err != nil {
 		return nil, err
@@ -45,7 +45,7 @@ func SendWithContext(ctx context.Context, url IUrl, defaultHeaders IWebHeaderCol
 		method:      method,
 		reader:      request,
 	}
-	response, err := GetHttpClient().Send(ctx, &rq, options...)
+	response, err := GetHttpClient().Send(ctx, &rq)
 	if err != nil {
 		return nil, err
 	}
