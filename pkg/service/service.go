@@ -11,8 +11,10 @@ type States int
 type ReloadStates int
 
 const (
-	STOPPED States = iota
-	STARTED
+	RUNNING      States = 1
+	HEALTH_CHECK States = 1
+	ERRORED      States = 2
+	STOPPED      States = 3
 )
 
 const (
@@ -22,7 +24,7 @@ const (
 
 type Service interface {
 	Configure(bool) error
-	Start() error
+	Start() <-chan States
 	Stop() error
 	Reload() <-chan ReloadStates
 }
@@ -31,12 +33,22 @@ func Bootstrapper(services ...Service) {
 	var states sync.Map
 	for _, service := range services {
 		service.Configure(false)
-		service.Start()
-		states.Store(service, STARTED)
+		state := service.Start()
+		if <-state != RUNNING {
+			continue
+		}
+		states.Store(service, RUNNING)
+		go func(service Service) {
+			for value := range state {
+				if value == ERRORED {
+					states.Store(service, ERRORED)
+				}
+			}
+		}(service)
 		go func(service Service) {
 			for {
 				value, ok := states.Load(service)
-				if !ok || value.(States) == STOPPED {
+				if !ok || value.(States) > RUNNING {
 					break
 				}
 				select {
