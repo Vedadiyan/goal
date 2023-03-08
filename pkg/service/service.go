@@ -14,7 +14,7 @@ const (
 	RUNNING      States = 1
 	HEALTH_CHECK States = 1
 	ERRORED      States = 2
-	STOPPED      States = 3
+	_STOPPED     States = 3
 )
 
 const (
@@ -24,6 +24,7 @@ const (
 
 type Service interface {
 	Configure(bool) error
+	HealthCheck()
 	Start() <-chan States
 	Stop() error
 	Reload() <-chan ReloadStates
@@ -39,9 +40,18 @@ func Bootstrapper(services ...Service) {
 		}
 		states.Store(service, RUNNING)
 		go func(service Service) {
+		LOOP:
 			for value := range state {
-				if value == ERRORED {
-					states.Store(service, ERRORED)
+				switch value {
+				case HEALTH_CHECK:
+					{
+						service.HealthCheck()
+					}
+				case ERRORED:
+					{
+						states.Store(service, ERRORED)
+						break LOOP
+					}
 				}
 			}
 		}(service)
@@ -73,7 +83,7 @@ func Bootstrapper(services ...Service) {
 	}
 	runtime.WaitForInterrupt(func() {
 		for _, service := range services {
-			states.Store(service, STOPPED)
+			states.Store(service, _STOPPED)
 			service.Stop()
 		}
 	})
