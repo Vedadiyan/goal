@@ -8,26 +8,7 @@ import (
 )
 
 func Send(url IUrl, defaultHeaders IWebHeaderCollection, method Method, request io.ReadCloser) (res IHttpResponse, err error) {
-	rqUrl, err := url.Url()
-	if err != nil {
-		return nil, err
-	}
-	headers := defaultHeaders
-	if headers == nil {
-		headers = NewWebHeaderCollection()
-	}
-	rq := httpRequest{
-		url:         rqUrl,
-		contentType: headers.GetOrDefault("Content-Type", "text/plain"),
-		headers:     headers,
-		method:      method,
-		reader:      request,
-	}
-	response, err := GetHttpClient().Send(context.TODO(), &rq)
-	if err != nil {
-		return nil, err
-	}
-	return response, nil
+	return SendWithContext(context.TODO(), url, defaultHeaders, method, request)
 }
 func SendWithContext(ctx context.Context, url IUrl, defaultHeaders IWebHeaderCollection, method Method, request io.ReadCloser) (IHttpResponse, error) {
 	rqUrl, err := url.Url()
