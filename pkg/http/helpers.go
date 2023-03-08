@@ -31,6 +31,28 @@ func Send(url IUrl, defaultHeaders IWebHeaderCollection, method Method, request 
 	}
 	return response, nil
 }
+func SendWithContext(ctx context.Context, url IUrl, defaultHeaders IWebHeaderCollection, method Method, request io.ReadCloser, options ...Option) (IHttpResponse, error) {
+	rqUrl, err := url.Url()
+	if err != nil {
+		return nil, err
+	}
+	headers := defaultHeaders
+	if headers == nil {
+		headers = NewWebHeaderCollection()
+	}
+	rq := httpRequest{
+		url:         rqUrl,
+		contentType: headers.GetOrDefault("Content-Type", "text/plain"),
+		headers:     headers,
+		method:      method,
+		reader:      request,
+	}
+	response, err := GetHttpClient().Send(ctx, &rq, options...)
+	if err != nil {
+		return nil, err
+	}
+	return response, nil
+}
 
 func Must[TType any](fn func() (TType, error)) TType {
 	res, err := fn()
