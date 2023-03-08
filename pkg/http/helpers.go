@@ -13,10 +13,10 @@ type JSON string
 type XML string
 type URLEncoded = url.Values
 
-func Send(url IUrl, defaultHeaders IWebHeaderCollection, method Method, request any) (res IHttpResponse, err error) {
+func Send[T string | JSON | XML | URLEncoded | []byte](url IUrl, defaultHeaders IWebHeaderCollection, method Method, request T) (res IHttpResponse, err error) {
 	return SendWithContext(context.TODO(), url, defaultHeaders, method, request)
 }
-func SendWithContext(ctx context.Context, url IUrl, defaultHeaders IWebHeaderCollection, method Method, request any) (IHttpResponse, error) {
+func SendWithContext[T string | JSON | XML | URLEncoded | []byte](ctx context.Context, url IUrl, defaultHeaders IWebHeaderCollection, method Method, request T) (IHttpResponse, error) {
 	rqUrl, err := url.Url()
 	if err != nil {
 		return nil, err
@@ -48,8 +48,8 @@ func Must[TType any](fn func() (TType, error)) TType {
 	return res
 }
 
-func Nil() io.ReadCloser {
-	return io.NopCloser(bytes.NewReader([]byte{}))
+func Nil() []byte {
+	return nil
 }
 
 func GetRequest(request any) (string, io.ReadCloser) {
