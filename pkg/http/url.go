@@ -10,10 +10,6 @@ import (
 type Query map[string][]string
 type RouteValues map[string]string
 
-type IUrl interface {
-	Url() (*url.URL, error)
-}
-
 type UrlTemplate struct {
 	template string
 }

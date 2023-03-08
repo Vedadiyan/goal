@@ -12,21 +12,17 @@ type JSON string
 type XML string
 type URLEncoded = url.Values
 
-func Send[T string | JSON | XML | URLEncoded | []byte](url IUrl, defaultHeaders IWebHeaderCollection, method Method, request T) (res IHttpResponse, err error) {
+func Send[T string | JSON | XML | URLEncoded | []byte](url *url.URL, defaultHeaders IWebHeaderCollection, method Method, request T) (res IHttpResponse, err error) {
 	return SendWithContext(context.TODO(), url, defaultHeaders, method, request)
 }
-func SendWithContext[T string | JSON | XML | URLEncoded | []byte](ctx context.Context, url IUrl, defaultHeaders IWebHeaderCollection, method Method, request T) (IHttpResponse, error) {
-	rqUrl, err := url.Url()
-	if err != nil {
-		return nil, err
-	}
+func SendWithContext[T string | JSON | XML | URLEncoded | []byte](ctx context.Context, url *url.URL, defaultHeaders IWebHeaderCollection, method Method, request T) (IHttpResponse, error) {
 	headers := defaultHeaders
 	if headers == nil {
 		headers = NewWebHeaderCollection()
 	}
 	rqType, readCloser := GetRequest(request)
 	rq := httpRequest{
-		url:         rqUrl,
+		url:         url,
 		contentType: rqType,
 		headers:     headers,
 		method:      method,
