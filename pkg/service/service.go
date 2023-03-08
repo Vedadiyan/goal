@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/vedadiyan/goal/pkg/runtime"
+	"github.com/vedadiyan/goal/pkg/util"
 )
 
 type States int
@@ -55,7 +56,7 @@ func starter(service Service) {
 	LOOP:
 		for {
 			select {
-			case value := <-GetOrBlockForever(state):
+			case value := <-util.GuardAgainstClosedChan(state):
 				{
 					switch value {
 					case HEALTH_CHECK:
@@ -87,15 +88,4 @@ func starter(service Service) {
 			}
 		}
 	}(service)
-}
-
-func GetOrBlockForever[T any](c <-chan T) <-chan T {
-	returnChan := make(chan T)
-	value, ok := <-c
-	if ok {
-		go func() {
-			returnChan <- value
-		}()
-	}
-	return returnChan
 }
