@@ -8,7 +8,6 @@ import (
 func Unmarshal(data map[string]any, message proto.Message) error {
 	return unmarshallerNext(data, nil, -1, message)
 }
-
 func unmarshallerSet(data any, fd protoreflect.FieldDescriptor, message proto.Message) {
 	if !fd.IsList() {
 		message.ProtoReflect().Set(fd, protoreflect.ValueOf(data))
@@ -17,7 +16,6 @@ func unmarshallerSet(data any, fd protoreflect.FieldDescriptor, message proto.Me
 	ls := message.(protoreflect.List)
 	ls.Append(protoreflect.ValueOf(data))
 }
-
 func unmarshallerSetList(data []any, fields protoreflect.FieldDescriptors, fd protoreflect.FieldDescriptor, name string, message proto.Message) error {
 	f := unmarshallerGetField(fields, name)
 	if f == nil {
@@ -44,7 +42,6 @@ func unmarshallerSetList(data []any, fields protoreflect.FieldDescriptors, fd pr
 	message.ProtoReflect().Set(f, protoreflect.ValueOfList(ref))
 	return nil
 }
-
 func unmarshallerGetField(fields protoreflect.FieldDescriptors, name string) protoreflect.FieldDescriptor {
 	for i := 0; i < fields.Len(); i++ {
 		f := fields.Get(i)
@@ -54,7 +51,6 @@ func unmarshallerGetField(fields protoreflect.FieldDescriptors, name string) pro
 	}
 	return nil
 }
-
 func unmarshallerSetObject(data map[string]any, fields protoreflect.FieldDescriptors, name string, message proto.Message) error {
 	f := unmarshallerGetField(fields, name)
 	if f == nil {
@@ -68,7 +64,6 @@ func unmarshallerSetObject(data map[string]any, fields protoreflect.FieldDescrip
 	unmarshallerSet(ref, f, message)
 	return nil
 }
-
 func unmarshallerSetOneOf(value any, field protoreflect.FieldDescriptor, name string, message proto.Message) error {
 	f := field.ContainingOneof().Fields().ByName(protoreflect.Name(name))
 	switch f.Kind() {
@@ -86,7 +81,6 @@ func unmarshallerSetOneOf(value any, field protoreflect.FieldDescriptor, name st
 	}
 	return nil
 }
-
 func unmarshallerSetValue(value any, fields protoreflect.FieldDescriptors, name string, message proto.Message) error {
 	f := unmarshallerGetField(fields, name)
 	if f == nil {
@@ -102,7 +96,6 @@ func unmarshallerSetValue(value any, fields protoreflect.FieldDescriptors, name 
 	message.ProtoReflect().Set(f, protoreflect.ValueOf(value))
 	return nil
 }
-
 func unmarshallerNext(data map[string]any, fd protoreflect.FieldDescriptor, index int, message proto.Message) error {
 	fields := message.ProtoReflect().Descriptor().Fields()
 	for key, value := range data {
