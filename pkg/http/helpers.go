@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"io"
-	"log"
 	"net/url"
 	"strings"
 )
@@ -38,14 +37,6 @@ func SendWithContext[T string | JSON | XML | URLEncoded | []byte](ctx context.Co
 		return nil, err
 	}
 	return response, nil
-}
-
-func Must[TType any](fn func() (TType, error)) TType {
-	res, err := fn()
-	if err != nil {
-		log.Fatalln(err)
-	}
-	return res
 }
 
 func Nil() []byte {
