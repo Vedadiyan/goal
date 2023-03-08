@@ -64,7 +64,7 @@ func GetRequest(request any) (string, io.ReadCloser) {
 		}
 	case XML:
 		{
-			return "text/xml", io.NopCloser(strings.NewReader(string(t)))
+			return "application/xml", io.NopCloser(strings.NewReader(string(t)))
 		}
 	case URLEncoded:
 		{
