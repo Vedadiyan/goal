@@ -3,7 +3,7 @@ package util
 import "regexp"
 
 const (
-	_JSON_PATTERN = `^[\{\[].*[\}\]]$`
+	_JSON_PATTERN = `^(\{(\s*"[^"]+"\s*:\s*(?:"[^"]*"|\d+|true|false|null)(?:\s*,\s*"[^"]+"\s*:\s*(?:"[^"]*"|\d+|true|false|null))*\s*|)\}|\[(\s*(?:"[^"]*"|\d+|true|false|null)(?:\s*,\s*(?:"[^"]*"|\d+|true|false|null))*\s*|)\])$`
 )
 
 var (

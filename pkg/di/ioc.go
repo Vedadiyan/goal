@@ -47,6 +47,10 @@ func NewOptions(scopeId uint64, ttl time.Duration) *options {
 
 func AddSinleton[T any](service func() (instance T, err error)) error {
 	name := nameOf[T]()
+	return AddScopedWithName(name, service)
+}
+
+func AddSinletonWithName[T any](name string, service func() (instance T, err error)) error {
 	singleton := singleton[T]{
 		ig: service,
 	}
@@ -59,6 +63,10 @@ func AddSinleton[T any](service func() (instance T, err error)) error {
 
 func AddTransient[T any](service func() (instance T, err error)) error {
 	name := nameOf[T]()
+	return AddTransientWithName(name, service)
+}
+
+func AddTransientWithName[T any](name string, service func() (instance T, err error)) error {
 	if _, ok := context.Load(name); ok {
 		return objectAlreadyExistsError(name)
 	}
@@ -69,6 +77,10 @@ func AddTransient[T any](service func() (instance T, err error)) error {
 
 func AddScoped[T any](service func() (instance T, err error)) error {
 	name := nameOf[T]()
+	return AddScopedWithName(name, service)
+}
+
+func AddScopedWithName[T any](name string, service func() (instance T, err error)) error {
 	if _, ok := context.LoadOrStore(name, service); ok {
 		return objectAlreadyExistsError(name)
 	}
@@ -91,6 +103,10 @@ func ResolveOrNil[T any](options *options) *T {
 
 func Resolve[T any](options *options) (instance *T, err error) {
 	name := nameOf[T]()
+	return ResolveWithName[T](name, options)
+}
+
+func ResolveWithName[T any](name string, options *options) (instance *T, err error) {
 	lifeCycle, ok := contextTypes.Load(name)
 	if !ok {
 		return nil, objectNotFoundError(name)
