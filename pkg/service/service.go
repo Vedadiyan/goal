@@ -55,7 +55,7 @@ func starter(service Service) {
 	LOOP:
 		for {
 			select {
-			case value := <-state:
+			case value := <-GetOrBlockForever(state):
 				{
 					switch value {
 					case HEALTH_CHECK:
@@ -87,4 +87,15 @@ func starter(service Service) {
 			}
 		}
 	}(service)
+}
+
+func GetOrBlockForever[T any](c <-chan T) <-chan T {
+	returnChan := make(chan T)
+	value, ok := <-c
+	if ok {
+		go func() {
+			returnChan <- value
+		}()
+	}
+	return returnChan
 }
