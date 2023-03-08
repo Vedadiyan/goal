@@ -79,7 +79,7 @@ func RefreshSinleton[T any](service func() (instance T, err error)) error {
 func RefreshSinletonWithName[T any](name string, service func() (instance T, err error)) error {
 	values, ok := _singletonRefresh.Load(name)
 	if ok {
-		for _, value := range values.([]func(event Events)) {
+		for _, value := range values.([]func(Events)) {
 			value(REFRESHING)
 		}
 	}
@@ -88,24 +88,24 @@ func RefreshSinletonWithName[T any](name string, service func() (instance T, err
 	}
 	_context.Store(name, &singleton)
 	if ok {
-		for _, value := range values.([]func(event Events)) {
+		for _, value := range values.([]func(Events)) {
 			value(REFRESHED)
 		}
 	}
 	return nil
 }
 
-func OnSingletonRefresh[T any](cb func(event Events)) {
+func OnSingletonRefresh[T any](cb func(Events)) {
 	name := nameOf[T]()
 	OnSingletonRefreshWithName(name, cb)
 }
 
-func OnSingletonRefreshWithName(name string, cb func(event Events)) {
+func OnSingletonRefreshWithName(name string, cb func(Events)) {
 	value, ok := _singletonRefresh.Load(name)
 	if !ok {
-		value = make([]func(event Events), 0)
+		value = make([]func(Events), 0)
 	}
-	value = append(value.([]func(event Events)), cb)
+	value = append(value.([]func(Events)), cb)
 	_singletonRefresh.Store(name, value)
 }
 

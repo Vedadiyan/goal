@@ -72,12 +72,12 @@ func Get[T any](key string) (T, error) {
 	return v, nil
 }
 
-func Watch(key string, cb func(event Events, value any)) {
+func Watch(key string, cb func(Events, any)) {
 	value, ok := _watchers.Load(key)
 	if !ok {
-		value = make([]func(event Events, value any), 0)
+		value = make([]func(Events, any), 0)
 	}
-	value = append(value.([]func(event Events, value any)), cb)
+	value = append(value.([]func(Events, any)), cb)
 	_watchers.Store(key, value)
 }
 
@@ -86,7 +86,7 @@ func raise(event Events, key string, value any) {
 	if !ok {
 		return
 	}
-	for _, value := range values.([]func(event Events, value any)) {
+	for _, value := range values.([]func(Events, any)) {
 		value(event, value)
 	}
 }
