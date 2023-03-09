@@ -53,8 +53,7 @@ func (t NATSService) Reload() <-chan ReloadStates {
 	return t.reloadState
 }
 func (t NATSService) handler(msg *nats.Msg) {
-	id := msg.Reply
-	insight := insight.New(t.namespace, id)
+	insight := insight.New(t.namespace, msg.Reply)
 	defer insight.Close()
 	var request proto.Message
 	headers := nats.Header{}
