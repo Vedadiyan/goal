@@ -9,9 +9,6 @@ import (
 
 type Handler func(proto.Message) (proto.Message, error)
 
-type Request = proto.Message
-type Response = proto.Message
-
 type NATSService struct {
 	conn         *nats.Conn
 	codec        *codecs.CompressedProtoConn
@@ -55,7 +52,7 @@ func (t NATSService) Reload() <-chan ReloadStates {
 	return t.reloadState
 }
 func (t NATSService) handler(msg *nats.Msg) {
-	var request Request
+	var request proto.Message
 	err := t.codec.Decode(msg.Subject, msg.Data, &request)
 	if err != nil {
 		return
