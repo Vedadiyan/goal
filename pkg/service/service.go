@@ -1,12 +1,18 @@
 package service
 
 import (
+	"crypto/sha256"
+	"encoding/base64"
+	"time"
+
 	"github.com/nats-io/nats.go"
 	codecs "github.com/vedadiyan/goal/pkg/bus/nats"
 	"github.com/vedadiyan/goal/pkg/di"
 	"github.com/vedadiyan/goal/pkg/insight"
 	"google.golang.org/protobuf/proto"
 )
+
+type Option func(*NATSService)
 
 type Handler func(proto.Message) (proto.Message, error)
 
@@ -15,11 +21,13 @@ type NATSService struct {
 	codec        *codecs.CompressedProtoConn
 	reloadState  chan ReloadStates
 	subscription *nats.Subscription
-
-	connName  string
-	namespace string
-	queue     string
-	handlerFn Handler
+	bucket       *nats.KeyValue
+	isCached     bool
+	ttl          time.Duration
+	connName     string
+	namespace    string
+	queue        string
+	handlerFn    Handler
 }
 
 func (t *NATSService) Configure(b bool) {
@@ -36,7 +44,44 @@ func (t *NATSService) Configure(b bool) {
 	}
 	t.conn = *di.ResolveWithNameOrPanic[*nats.Conn](t.connName, nil)
 }
+func (t *NATSService) configureCache() error {
+	js, err := t.conn.JetStream()
+	if err != nil {
+		return err
+	}
+	buckets := js.KeyValueStoreNames()
+	bucketExists := false
+	for bucket := range buckets {
+		if bucket == t.namespace {
+			bucketExists = true
+			break
+		}
+	}
+	if !bucketExists {
+		bucket, err := js.CreateKeyValue(&nats.KeyValueConfig{
+			Bucket: t.namespace,
+			TTL:    t.ttl,
+		})
+		if err != nil {
+			return err
+		}
+		t.bucket = &bucket
+		return nil
+	}
+	bucket, err := js.KeyValue(t.namespace)
+	if err != nil {
+		return err
+	}
+	t.bucket = &bucket
+	return nil
+}
 func (t *NATSService) Start() error {
+	if t.isCached {
+		err := t.configureCache()
+		if err != nil {
+			return err
+		}
+	}
 	subs, err := t.conn.QueueSubscribe(t.namespace, t.queue, func(msg *nats.Msg) {
 		go t.handler(msg)
 	})
@@ -58,6 +103,26 @@ func (t NATSService) handler(msg *nats.Msg) {
 	var request proto.Message
 	headers := nats.Header{}
 	outMsg := &nats.Msg{Subject: msg.Reply, Header: headers}
+	if t.isCached {
+		requestHash, err := GetHash(msg.Data)
+		if err != nil {
+			headers.Add("status", "FAIL:REQUEST:HASH")
+			msg.RespondMsg(outMsg)
+			insight.Error(err)
+			return
+		}
+		value, err := (*t.bucket).Get(requestHash)
+		if err == nil {
+			headers.Add("status", "SUCCESS")
+			outMsg.Data = value.Value()
+			msg.RespondMsg(outMsg)
+			if err != nil {
+				insight.Error(err)
+				return
+			}
+			return
+		}
+	}
 	err := t.codec.Decode(msg.Subject, msg.Data, &request)
 	if err != nil {
 		headers.Add("status", "FAIL:DECODE")
@@ -80,6 +145,16 @@ func (t NATSService) handler(msg *nats.Msg) {
 		insight.Error(err)
 		return
 	}
+	if t.isCached {
+		requestHash, err := GetHash(bytes)
+		if err != nil {
+			headers.Add("status", "FAIL:REQUEST:HASH")
+			msg.RespondMsg(outMsg)
+			insight.Error(err)
+			return
+		}
+		(*t.bucket).Create(requestHash, bytes)
+	}
 	headers.Add("status", "SUCCESS")
 	outMsg.Data = bytes
 	msg.RespondMsg(outMsg)
@@ -88,12 +163,33 @@ func (t NATSService) handler(msg *nats.Msg) {
 		return
 	}
 }
-func New(connName string, namespace string, queue string, handlerFn Handler) *NATSService {
+
+func GetHash(bytes []byte) (string, error) {
+	sha256 := sha256.New()
+	_, err := sha256.Write(bytes)
+	if err != nil {
+		return "", err
+	}
+	requestHash := sha256.Sum(nil)
+	return base64.StdEncoding.EncodeToString(requestHash), nil
+}
+
+func New(connName string, namespace string, queue string, handlerFn Handler, options ...Option) *NATSService {
 	service := NATSService{
 		namespace: namespace,
 		queue:     queue,
 		handlerFn: handlerFn,
 		connName:  connName,
 	}
+	for _, option := range options {
+		option(&service)
+	}
 	return &service
+}
+
+func WithCache(ttl time.Duration) Option {
+	return func(n *NATSService) {
+		n.isCached = true
+		n.ttl = ttl
+	}
 }
