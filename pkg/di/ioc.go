@@ -123,6 +123,17 @@ func AddTransientWithName[T any](name string, service func() (instance T, err er
 	return nil
 }
 
+func RefreshTransient[T any](service func() (instance T, err error)) error {
+	name := nameOf[T]()
+	return RefreshTransientWithName(name, service)
+}
+
+func RefreshTransientWithName[T any](name string, service func() (instance T, err error)) error {
+	_context.Store(name, service)
+	_contextTypes.Store(name, TRANSIENT)
+	return nil
+}
+
 func AddScoped[T any](service func() (instance T, err error)) error {
 	name := nameOf[T]()
 	return AddScopedWithName(name, service)
@@ -132,6 +143,16 @@ func AddScopedWithName[T any](name string, service func() (instance T, err error
 	if _, ok := _context.LoadOrStore(name, service); ok {
 		return objectAlreadyExistsError(name)
 	}
+	_contextTypes.Store(name, SCOPED)
+	return nil
+}
+
+func RefreshScoped[T any](service func() (instance T, err error)) error {
+	name := nameOf[T]()
+	return RefreshScopedWithName(name, service)
+}
+
+func RefreshScopedWithName[T any](name string, service func() (instance T, err error)) error {
 	_contextTypes.Store(name, SCOPED)
 	return nil
 }
