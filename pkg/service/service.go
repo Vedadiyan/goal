@@ -82,9 +82,17 @@ func (t *NATSService) Start() error {
 			return err
 		}
 	}
-	subs, err := t.conn.QueueSubscribe(t.namespace, t.queue, func(msg *nats.Msg) {
-		go t.handler(msg)
-	})
+	var subs *nats.Subscription
+	var err error
+	if t.queue != "" {
+		subs, err = t.conn.QueueSubscribe(t.namespace, t.queue, func(msg *nats.Msg) {
+			go t.handler(msg)
+		})
+	} else {
+		subs, err = t.conn.Subscribe(t.namespace, func(msg *nats.Msg) {
+			go t.handler(msg)
+		})
+	}
 	if err != nil {
 		return err
 	}
