@@ -183,6 +183,10 @@ func ResolveWithName[T any](name string, options *options) (instance *T, err err
 	}
 }
 
+func CloseScope(option options) {
+	_scopedContext.Delete(option.scopeId)
+}
+
 func resolveSingleton[T any](object any, name string) (instance *T, err error) {
 	value, ok := object.(*singleton[T])
 	if !ok {
