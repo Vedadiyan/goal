@@ -1,73 +1,84 @@
 package service
 
 import (
-	"sync"
-
-	"github.com/vedadiyan/goal/pkg/runtime"
+	"github.com/nats-io/nats.go"
+	codecs "github.com/vedadiyan/goal/pkg/bus/nats"
+	"github.com/vedadiyan/goal/pkg/di"
+	"google.golang.org/protobuf/proto"
 )
 
-type ReloadStates int
+type Handler func(proto.Message) (proto.Message, error)
 
-const (
-	RELOADING ReloadStates = iota
-	RELOADED
-)
+type Request = proto.Message
+type Response = proto.Message
 
-var _services sync.Pool
+type NATSService struct {
+	conn         *nats.Conn
+	codec        *codecs.CompressedProtoConn
+	reloadState  chan ReloadStates
+	subscription *nats.Subscription
 
-type Service interface {
-	Configure(bool)
-	Start() error
-	Shutdown() error
-	Reload() <-chan ReloadStates
+	connName  string
+	namespace string
+	queue     string
+	handlerFn Handler
 }
 
-func Register(service Service) {
-	_services.Put(service)
+func (t *NATSService) Configure(b bool) {
+	if !b {
+		di.OnSingletonRefreshWithName(t.connName, func(e di.Events) {
+			if e == di.REFRESHED {
+				t.conn = *di.ResolveWithNameOrPanic[*nats.Conn](t.connName, nil)
+				t.reloadState <- RELOADED
+				return
+			}
+			t.reloadState <- RELOADING
+		})
+		return
+	}
+	t.conn = *di.ResolveWithNameOrPanic[*nats.Conn](t.connName, nil)
 }
-
-func Bootstrapper() {
-	services := make([]Service, 0)
-	for {
-		service := _services.Get()
-		if service == nil {
-			break
-		}
-		services = append(services, service.(Service))
-	}
-	for _, service := range services {
-		starter(service)
-	}
-	runtime.WaitForInterrupt(func() {
-		for _, service := range services {
-			service.Shutdown()
-		}
+func (t *NATSService) Start() error {
+	subs, err := t.conn.QueueSubscribe(t.namespace, t.queue, func(msg *nats.Msg) {
+		go t.handler(msg)
 	})
+	if err != nil {
+		return err
+	}
+	t.subscription = subs
+	return nil
 }
-
-func starter(service Service) {
-	service.Configure(false)
-	err := service.Start()
+func (t NATSService) Shutdown() error {
+	return t.subscription.Unsubscribe()
+}
+func (t NATSService) Reload() <-chan ReloadStates {
+	return t.reloadState
+}
+func (t NATSService) handler(msg *nats.Msg) {
+	var request Request
+	err := t.codec.Decode(msg.Subject, msg.Data, &request)
 	if err != nil {
 		return
 	}
-	go func(service Service) {
-	LOOP:
-		for value := range service.Reload() {
-			switch value {
-			case RELOADING:
-				{
-					service.Shutdown()
-				}
-			case RELOADED:
-				{
-					service.Configure(true)
-					err := service.Start()
-					if err != nil {
-						break LOOP
-					}
-				}
-			}
-		}
-	}(service)
+	response, err := t.handlerFn(request)
+	if err != nil {
+		return
+	}
+	bytes, err := t.codec.Encode(msg.Subject, response)
+	if err != nil {
+		return
+	}
+	err = msg.Respond(bytes)
+	if err != nil {
+		return
+	}
+}
+func New(connName string, namespace string, queue string, handlerFn Handler) *NATSService {
+	service := NATSService{
+		namespace: namespace,
+		queue:     queue,
+		handlerFn: handlerFn,
+		connName:  connName,
+	}
+	return &service
 }
