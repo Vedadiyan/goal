@@ -4,6 +4,7 @@ import (
 	"github.com/nats-io/nats.go"
 	codecs "github.com/vedadiyan/goal/pkg/bus/nats"
 	"github.com/vedadiyan/goal/pkg/di"
+	"github.com/vedadiyan/goal/pkg/insight"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -52,21 +53,39 @@ func (t NATSService) Reload() <-chan ReloadStates {
 	return t.reloadState
 }
 func (t NATSService) handler(msg *nats.Msg) {
+	id := msg.Reply
+	insight := insight.New(t.namespace, id)
+	defer insight.Close()
 	var request proto.Message
+	headers := nats.Header{}
+	outMsg := &nats.Msg{Subject: msg.Reply, Header: headers}
 	err := t.codec.Decode(msg.Subject, msg.Data, &request)
 	if err != nil {
+		headers.Add("status", "FAIL:DECODE")
+		msg.RespondMsg(outMsg)
+		insight.Error(err)
 		return
 	}
+	insight.Start(request)
 	response, err := t.handlerFn(request)
 	if err != nil {
+		headers.Add("status", "FAIL:HANDLE")
+		msg.RespondMsg(outMsg)
+		insight.Error(err)
 		return
 	}
 	bytes, err := t.codec.Encode(msg.Subject, response)
 	if err != nil {
+		headers.Add("status", "FAIL:ENCODE")
+		msg.RespondMsg(outMsg)
+		insight.Error(err)
 		return
 	}
-	err = msg.Respond(bytes)
+	headers.Add("status", "SUCCESS")
+	outMsg.Data = bytes
+	msg.RespondMsg(outMsg)
 	if err != nil {
+		insight.Error(err)
 		return
 	}
 }

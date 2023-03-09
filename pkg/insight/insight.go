@@ -1,7 +1,6 @@
 package insight
 
 import (
-	"fmt"
 	"log"
 	"os"
 	"time"
@@ -24,6 +23,7 @@ const (
 )
 
 type IExecutionContext interface {
+	Start(params ...any)
 	Warn(data any)
 	Info(data any)
 	Error(err error)
@@ -31,7 +31,7 @@ type IExecutionContext interface {
 }
 
 type ExecutionContext struct {
-	id     int64
+	id     string
 	origin string
 	start  time.Time
 	end    time.Time
@@ -64,11 +64,11 @@ func UseInfluxDbWithFailover(dsn string, authToken string, org string, bucket st
 	return nil
 }
 
-func New(origin string, params ...any) IExecutionContext {
+func New(origin string, id string) IExecutionContext {
 	executionContext := &ExecutionContext{}
 	executionContext.origin = origin
 	executionContext.logger = _logger
-	executionContext.Start(params...)
+	executionContext.id = id
 	return executionContext
 }
 
@@ -80,13 +80,12 @@ func NewWithLogger(logger Logger) IExecutionContext {
 
 func (e *ExecutionContext) Start(params ...any) {
 	e.start = time.Now()
-	e.id = time.Now().UnixNano()
 	info := make(map[string]any)
 	info["status"] = "Started"
 	info["params"] = params
-	e.logger(INFO, fmt.Sprintf("%d", e.id), info)
+	e.logger(INFO, e.id, info)
 	for _, middleware := range _middleware {
-		middleware(fmt.Sprintf("%d", e.id), e.origin, INFO, info)
+		middleware(e.id, e.origin, INFO, info)
 	}
 }
 
@@ -95,9 +94,9 @@ func (e *ExecutionContext) Error(err error) {
 	info := make(map[string]any)
 	info["status"] = "Errored"
 	info["error"] = err.Error()
-	e.logger(ERROR, fmt.Sprintf("%d", e.id), info)
+	e.logger(ERROR, e.id, info)
 	for _, middleware := range _middleware {
-		middleware(fmt.Sprintf("%d", e.id), e.origin, ERROR, info)
+		middleware(e.id, e.origin, ERROR, info)
 	}
 }
 
@@ -108,9 +107,9 @@ func (e *ExecutionContext) Info(data any) {
 	if data != nil {
 		info["data"] = data
 	}
-	e.logger(INFO, fmt.Sprintf("%d", e.id), info)
+	e.logger(INFO, e.id, info)
 	for _, middleware := range _middleware {
-		middleware(fmt.Sprintf("%d", e.id), e.origin, INFO, info)
+		middleware(e.id, e.origin, INFO, info)
 	}
 }
 
@@ -121,9 +120,9 @@ func (e *ExecutionContext) Warn(data any) {
 	if data != nil {
 		info["data"] = data
 	}
-	e.logger(INFO, fmt.Sprintf("%d", e.id), info)
+	e.logger(INFO, e.id, info)
 	for _, middleware := range _middleware {
-		middleware(fmt.Sprintf("%d", e.id), e.origin, WARN, info)
+		middleware(e.id, e.origin, WARN, info)
 	}
 }
 
@@ -133,18 +132,18 @@ func (e *ExecutionContext) Close() {
 		info := make(map[string]any)
 		info["status"] = "Recovered"
 		info["error"] = recovered
-		e.logger(ERROR, fmt.Sprintf("%d", e.id), info)
+		e.logger(ERROR, e.id, info)
 		for _, middleware := range _middleware {
-			middleware(fmt.Sprintf("%d", e.id), e.origin, CRITICAL, info)
+			middleware(e.id, e.origin, CRITICAL, info)
 		}
 	}
 	e.end = time.Now()
 	info := make(map[string]any)
 	info["status"] = "Ended"
 	info["benchmark"] = e.end.Sub(e.start).Nanoseconds()
-	e.logger(INFO, fmt.Sprintf("%d", e.id), info)
+	e.logger(INFO, e.id, info)
 	for _, middleware := range _middleware {
-		middleware(fmt.Sprintf("%d", e.id), e.origin, INFO, info)
+		middleware(e.id, e.origin, INFO, info)
 	}
 }
 
