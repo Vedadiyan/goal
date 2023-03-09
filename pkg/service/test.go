@@ -26,18 +26,9 @@ func (t *TestService) Configure(b bool) {
 	t.conn = *di.ResolveWithNameOrPanic[*nats.Conn]("nats", nil)
 }
 func (t *TestService) Start() error {
-	subs, err := t.conn.QueueSubscribe("abcd.*", "balanced", func(msg *nats.Msg) {
+	subs, err := t.conn.QueueSubscribe("abcd", "balanced", func(msg *nats.Msg) {
 		go func() {
-			switch msg.Subject {
-			case "abcd.health_check":
-				{
 
-				}
-			case "abcd.service":
-				{
-
-				}
-			}
 		}()
 	})
 	if err != nil {

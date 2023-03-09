@@ -6,22 +6,14 @@ import (
 	"github.com/vedadiyan/goal/pkg/runtime"
 )
 
-type States int
 type ReloadStates int
-
-const (
-	RUNNING      States = 1
-	HEALTH_CHECK States = 1
-	ERRORED      States = 2
-	_STOPPED     States = 3
-)
 
 const (
 	RELOADING ReloadStates = iota
 	RELOADED
 )
 
-var states sync.Map
+var _services sync.Pool
 
 type Service interface {
 	Configure(bool)
@@ -30,13 +22,24 @@ type Service interface {
 	Reload() <-chan ReloadStates
 }
 
-func Bootstrapper(services ...Service) {
+func Register(service Service) {
+	_services.Put(service)
+}
+
+func Bootstrapper() {
+	services := make([]Service, 0)
+	for {
+		service := _services.Get()
+		if service == nil {
+			break
+		}
+		services = append(services, service.(Service))
+	}
 	for _, service := range services {
 		starter(service)
 	}
 	runtime.WaitForInterrupt(func() {
 		for _, service := range services {
-			states.Store(service, _STOPPED)
 			service.Shutdown()
 		}
 	})
@@ -48,8 +51,8 @@ func starter(service Service) {
 	if err != nil {
 		return
 	}
-	states.Store(service, RUNNING)
 	go func(service Service) {
+	LOOP:
 		for value := range service.Reload() {
 			switch value {
 			case RELOADING:
@@ -61,7 +64,7 @@ func starter(service Service) {
 					service.Configure(true)
 					err := service.Start()
 					if err != nil {
-						states.Store(service, ERRORED)
+						break LOOP
 					}
 				}
 			}

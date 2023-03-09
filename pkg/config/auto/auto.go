@@ -2,6 +2,7 @@ package config_auto
 
 import (
 	"context"
+	"sync"
 
 	"github.com/vedadiyan/goal/pkg/config"
 	config_etcd "github.com/vedadiyan/goal/pkg/config/etcd"
@@ -24,6 +25,8 @@ type Object struct {
 	Watch bool
 	CB    func(value KeyValue)
 }
+
+var _initializers sync.Pool
 
 func (k KeyValue) GetStringValue(key string) (string, error) {
 	if value, ok := k[key]; ok {
@@ -50,12 +53,21 @@ func (o Object) Init(value any) error {
 	return config.INVALID_OBJECT
 }
 
-func Bootstrap(url string, initializers ...Initializer) error {
+func Register(initializer Initializer) {
+	_initializers.Put(initializer)
+}
+
+func Bootstrap(url string) error {
 	etcdCnfxReader, err := config_etcd.NewClient([]string{url})
 	if err != nil {
 		return err
 	}
-	for _, initializer := range initializers {
+	for {
+		value := _initializers.Get()
+		if value == nil {
+			break
+		}
+		initializer := value.(Initializer)
 		switch t := initializer.(type) {
 		case String:
 			{
