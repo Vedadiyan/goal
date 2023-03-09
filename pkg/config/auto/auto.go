@@ -37,7 +37,6 @@ func (k KeyValue) GetStringValue(key string) (string, error) {
 	}
 	return "", config.KEY_NOT_FOUND
 }
-
 func (s String) Init(value any) error {
 	if str, ok := value.(string); ok {
 		s.CB(str)
@@ -52,11 +51,9 @@ func (o Object) Init(value any) error {
 	}
 	return config.INVALID_OBJECT
 }
-
 func Register(initializer Initializer) {
 	_initializers.Put(initializer)
 }
-
 func Bootstrap(url string) error {
 	etcdCnfxReader, err := config_etcd.NewClient([]string{url})
 	if err != nil {
@@ -122,4 +119,32 @@ func Bootstrap(url string) error {
 		}
 	}
 	return etcdCnfxReader.Close()
+}
+func New[T string | KeyValue](key string, watch bool, cb func(value T)) Initializer {
+	var value T
+	switch any(value).(type) {
+	case string:
+		{
+			initializer := String{
+				Key:   key,
+				Watch: watch,
+				CB: func(value string) {
+					cb(any(value).(T))
+				},
+			}
+			return initializer
+		}
+	case KeyValue:
+		{
+			Initializer := Object{
+				Key:   key,
+				Watch: watch,
+				CB: func(value KeyValue) {
+					cb(any(value).(T))
+				},
+			}
+			return Initializer
+		}
+	}
+	panic("unexpected case")
 }
