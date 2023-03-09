@@ -1,8 +1,21 @@
 package util
 
-func GuardAgainstClosedChan[T any](c <-chan T) <-chan T {
+func SimpleChanGuard[T any](source <-chan T) <-chan T {
 	returnChan := make(chan T)
-	value, ok := <-c
+	defer close(returnChan)
+	value, ok := <-source
+	if ok {
+		go func() {
+			returnChan <- value
+		}()
+	}
+	return returnChan
+}
+
+func ReferencedChanGuard[T any](source <-chan T, ref *chan T) <-chan T {
+	returnChan := make(chan T)
+	*ref = returnChan
+	value, ok := <-source
 	if ok {
 		go func() {
 			returnChan <- value

@@ -2,10 +2,8 @@ package service
 
 import (
 	"sync"
-	"time"
 
 	"github.com/vedadiyan/goal/pkg/runtime"
-	"github.com/vedadiyan/goal/pkg/util"
 )
 
 type States int
@@ -26,10 +24,9 @@ const (
 var states sync.Map
 
 type Service interface {
-	Configure(bool) error
-	HealthCheck()
-	Start() <-chan States
-	Stop() error
+	Configure(bool)
+	Start() error
+	Shutdown() error
 	Reload() <-chan ReloadStates
 }
 
@@ -40,51 +37,33 @@ func Bootstrapper(services ...Service) {
 	runtime.WaitForInterrupt(func() {
 		for _, service := range services {
 			states.Store(service, _STOPPED)
-			service.Stop()
+			service.Shutdown()
 		}
 	})
 }
 
 func starter(service Service) {
 	service.Configure(false)
-	state := service.Start()
-	if <-state != RUNNING {
+	err := service.Start()
+	if err != nil {
 		return
 	}
 	states.Store(service, RUNNING)
 	go func(service Service) {
-	LOOP:
-		for {
-			select {
-			case value := <-util.GuardAgainstClosedChan(state):
+		for value := range service.Reload() {
+			switch value {
+			case RELOADING:
 				{
-					switch value {
-					case HEALTH_CHECK:
-						{
-							service.HealthCheck()
-						}
-					case ERRORED:
-						{
-							states.Store(service, ERRORED)
-							break LOOP
-						}
+					service.Shutdown()
+				}
+			case RELOADED:
+				{
+					service.Configure(true)
+					err := service.Start()
+					if err != nil {
+						states.Store(service, ERRORED)
 					}
 				}
-			case value := <-service.Reload():
-				{
-					switch value {
-					case RELOADING:
-						{
-							service.Stop()
-						}
-					case RELOADED:
-						{
-							service.Configure(true)
-							state = service.Start()
-						}
-					}
-				}
-			case <-time.After(time.Second):
 			}
 		}
 	}(service)

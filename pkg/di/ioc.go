@@ -144,6 +144,14 @@ func ResolveOrPanic[T any](options *options) *T {
 	return value
 }
 
+func ResolveWithNameOrPanic[T any](name string, options *options) *T {
+	value, err := ResolveWithName[T](name, options)
+	if err != nil {
+		panic(err)
+	}
+	return value
+}
+
 func ResolveOrNil[T any](options *options) *T {
 	value, _ := Resolve[T](options)
 	return value
