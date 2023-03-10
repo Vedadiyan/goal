@@ -3,6 +3,7 @@ package service
 import (
 	"crypto/sha256"
 	"encoding/base64"
+	"sync"
 	"time"
 
 	"github.com/nats-io/nats.go"
@@ -30,9 +31,13 @@ type NATSService struct {
 	handlerFn    Handler
 }
 
+var mut sync.Mutex
+
 func (t *NATSService) Configure(b bool) {
 	if !b {
 		di.OnRefreshWithName(t.connName, func(e di.Events) {
+			mut.Lock()
+			defer mut.Unlock()
 			t.reloadState <- RELOADING
 			res := <-t.reloadState
 			if res == ACK {
@@ -41,7 +46,6 @@ func (t *NATSService) Configure(b bool) {
 				return
 			}
 		})
-		return
 	}
 	t.conn = *di.ResolveWithNameOrPanic[*nats.Conn](t.connName, nil)
 }
@@ -179,10 +183,11 @@ func GetHash(bytes []byte) (string, error) {
 
 func New(connName string, namespace string, queue string, handlerFn Handler, options ...Option) *NATSService {
 	service := NATSService{
-		namespace: namespace,
-		queue:     queue,
-		handlerFn: handlerFn,
-		connName:  connName,
+		namespace:   namespace,
+		queue:       queue,
+		handlerFn:   handlerFn,
+		connName:    connName,
+		reloadState: make(chan ReloadStates),
 	}
 	for _, option := range options {
 		option(&service)
