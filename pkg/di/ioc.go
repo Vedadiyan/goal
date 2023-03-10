@@ -25,6 +25,8 @@ var (
 	_contextTypes  sync.Map
 	_context       sync.Map
 	_scopedContext sync.Map
+
+	_refreshMute sync.Mutex
 )
 
 type options struct {
@@ -70,14 +72,20 @@ func AddSinletonWithName[T any](name string, service func() (instance T, err err
 	return nil
 }
 
-func RefreshSinleton[T any](service func() (instance T, err error)) error {
+func RefreshSinleton[T any](service func() (instance T, err error), oldService func(instance T)) error {
 	name := nameOf[T]()
-	return RefreshSinletonWithName(name, service)
+	return RefreshSinletonWithName(name, service, oldService)
 }
 
-func RefreshSinletonWithName[T any](name string, service func() (instance T, err error)) error {
+func RefreshSinletonWithName[T any](name string, newService func() (instance T, err error), oldService func(instance T)) error {
+	_refreshMute.Lock()
+	defer _refreshMute.Unlock()
+	inst, err := ResolveWithName[T](name, nil)
+	if err != nil {
+		return err
+	}
 	singleton := singleton[T]{
-		ig: service,
+		ig: newService,
 	}
 	_context.Store(name, &singleton)
 	values, ok := _refresh.Load(name)
@@ -86,6 +94,7 @@ func RefreshSinletonWithName[T any](name string, service func() (instance T, err
 			value(REFRESHED)
 		}
 	}
+	oldService(*inst)
 	return nil
 }
 
@@ -123,6 +132,8 @@ func RefreshTransient[T any](service func() (instance T, err error)) error {
 }
 
 func RefreshTransientWithName[T any](name string, service func() (instance T, err error)) error {
+	_refreshMute.Lock()
+	defer _refreshMute.Unlock()
 	_context.Store(name, service)
 	_contextTypes.Store(name, TRANSIENT)
 	values, ok := _refresh.Load(name)
@@ -153,6 +164,8 @@ func RefreshScoped[T any](service func() (instance T, err error)) error {
 }
 
 func RefreshScopedWithName[T any](name string, service func() (instance T, err error)) error {
+	_refreshMute.Lock()
+	defer _refreshMute.Unlock()
 	_contextTypes.Store(name, SCOPED)
 	values, ok := _refresh.Load(name)
 	if ok {

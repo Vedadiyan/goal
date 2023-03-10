@@ -3,6 +3,8 @@ package service
 import (
 	"log"
 	"sync"
+
+	"github.com/vedadiyan/goal/pkg/runtime"
 )
 
 type ReloadStates int
@@ -15,6 +17,7 @@ const (
 )
 
 var _services sync.Pool
+var _skipInterrupt bool
 
 type Service interface {
 	Configure(bool)
@@ -39,11 +42,13 @@ func Bootstrapper() {
 	for _, service := range services {
 		starter(service)
 	}
-	// runtime.WaitForInterrupt(func() {
-	// 	for _, service := range services {
-	// 		service.Shutdown()
-	// 	}
-	// })
+	if !_skipInterrupt {
+		runtime.WaitForInterrupt(func() {
+			for _, service := range services {
+				service.Shutdown()
+			}
+		})
+	}
 }
 
 func starter(service Service) {
