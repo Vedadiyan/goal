@@ -17,9 +17,6 @@ type NATSProxy[TResponse proto.Message] struct {
 }
 
 func (p NATSProxy[TResponse]) Send(request proto.Message) (*TResponse, error) {
-	if p.conn.IsClosed() {
-		return nil, fmt.Errorf("connection is closed")
-	}
 	enc, err := p.codec.Encode(p.namespace, request)
 	if err != nil {
 		return nil, err
