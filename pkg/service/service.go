@@ -93,7 +93,6 @@ func (t *NATSService) Start() error {
 	return nil
 }
 func (t NATSService) Shutdown() error {
-	defer t.conn.Close()
 	return t.subscription.Unsubscribe()
 }
 func (t NATSService) Reload() chan ReloadStates {

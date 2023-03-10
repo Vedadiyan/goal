@@ -16,7 +16,9 @@ func TestService(t *testing.T) {
 		return nats.Connect("127.0.0.1:4222")
 	})
 	service := New("nats", "test", "test", handler, WithCache(time.Hour))
+	service2 := New("nats", "test2", "test", handler, WithCache(time.Hour))
 	Register(service)
+	Register(service2)
 	Bootstrapper()
 	<-time.After(time.Second)
 	go func() {
@@ -61,7 +63,7 @@ func TestService(t *testing.T) {
 			conn.Close()
 		})
 	}()
-	<-time.After(time.Second * 10000)
+	<-time.After(time.Second * 10)
 }
 
 func handler(request proto.Message) (proto.Message, error) {
