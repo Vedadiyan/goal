@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"log"
 	"testing"
 	"time"
 
@@ -15,53 +16,92 @@ func TestService(t *testing.T) {
 	di.AddSinletonWithName("nats", func() (*nats.Conn, error) {
 		return nats.Connect("127.0.0.1:4222")
 	})
-	service := New("nats", "test", "test", handler, WithCache(time.Hour))
-	service2 := New("nats", "test2", "test", handler, WithCache(time.Hour))
-	Register(service)
-	Register(service2)
+	for i := 0; i < 100; i++ {
+		service := New("nats", fmt.Sprintf("%d", i), "test", handler, WithCache(time.Hour))
+		Register(service)
+	}
 	Bootstrapper()
 	<-time.After(time.Second)
 	go func() {
-		di.RefreshSinletonWithName("nats", func() (*nats.Conn, error) {
+		inst, err := di.RefreshSinletonWithName("nats", func() (*nats.Conn, error) {
 			return nats.Connect("127.0.0.1:4222")
-		}, func(conn *nats.Conn) {
-			conn.Close()
 		})
+		if err != nil {
+			log.Fatal(err)
+		}
+		(*inst).Close()
 	}()
 	go func() {
-		di.RefreshSinletonWithName("nats", func() (*nats.Conn, error) {
+		inst, err := di.RefreshSinletonWithName("nats", func() (*nats.Conn, error) {
 			return nats.Connect("127.0.0.1:4222")
-		}, func(conn *nats.Conn) {
-			conn.Close()
 		})
+		if err != nil {
+			log.Fatal(err)
+		}
+		(*inst).Close()
 	}()
 	go func() {
-		di.RefreshSinletonWithName("nats", func() (*nats.Conn, error) {
+		inst, err := di.RefreshSinletonWithName("nats", func() (*nats.Conn, error) {
 			return nats.Connect("127.0.0.1:4222")
-		}, func(conn *nats.Conn) {
-			conn.Close()
 		})
+		if err != nil {
+			log.Fatal(err)
+		}
+		(*inst).Close()
 	}()
 	go func() {
-		di.RefreshSinletonWithName("nats", func() (*nats.Conn, error) {
+		inst, err := di.RefreshSinletonWithName("nats", func() (*nats.Conn, error) {
 			return nats.Connect("127.0.0.1:4222")
-		}, func(conn *nats.Conn) {
-			conn.Close()
 		})
+		if err != nil {
+			log.Fatal(err)
+		}
+		(*inst).Close()
 	}()
 	go func() {
-		di.RefreshSinletonWithName("nats", func() (*nats.Conn, error) {
+		inst, err := di.RefreshSinletonWithName("nats", func() (*nats.Conn, error) {
 			return nats.Connect("127.0.0.1:4222")
-		}, func(conn *nats.Conn) {
-			conn.Close()
 		})
+		if err != nil {
+			log.Fatal(err)
+		}
+		(*inst).Close()
 	}()
 	go func() {
-		di.RefreshSinletonWithName("nats", func() (*nats.Conn, error) {
+		inst, err := di.RefreshSinletonWithName("nats", func() (*nats.Conn, error) {
 			return nats.Connect("127.0.0.1:4222")
-		}, func(conn *nats.Conn) {
-			conn.Close()
 		})
+		if err != nil {
+			log.Fatal(err)
+		}
+		(*inst).Close()
+	}()
+	go func() {
+		inst, err := di.RefreshSinletonWithName("nats", func() (*nats.Conn, error) {
+			return nats.Connect("127.0.0.1:4222")
+		})
+		if err != nil {
+			log.Fatal(err)
+		}
+		(*inst).Close()
+	}()
+	go func() {
+		inst, err := di.RefreshSinletonWithName("nats", func() (*nats.Conn, error) {
+			return nats.Connect("127.0.0.1:4222")
+		})
+		if err != nil {
+			log.Fatal(err)
+		}
+		(*inst).Close()
+	}()
+	go func() {
+		inst, err := di.RefreshSinletonWithName("nats", func() (*nats.Conn, error) {
+			return nats.Connect("127.0.0.1:4222")
+		})
+		if err != nil {
+			log.Fatal(err)
+		}
+		(*inst).Close()
 	}()
 	<-time.After(time.Second * 10)
 }
