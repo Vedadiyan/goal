@@ -72,20 +72,23 @@ func AddSinletonWithName[T any](name string, service func() (instance T, err err
 	return nil
 }
 
-func RefreshSinleton[T any](service func() (instance T, err error)) (*T, error) {
+func RefreshSinleton[T any](service func(current T) (instance T, err error)) (*T, error) {
 	name := nameOf[T]()
 	return RefreshSinletonWithName(name, service)
 }
 
-func RefreshSinletonWithName[T any](name string, newService func() (instance T, err error)) (*T, error) {
+func RefreshSinletonWithName[T any](name string, newService func(current T) (instance T, err error)) (*T, error) {
 	_refreshMute.Lock()
 	defer _refreshMute.Unlock()
-	inst, err := ResolveWithName[T](name, nil)
+	old, err := ResolveWithName[T](name, nil)
 	if err != nil {
 		return nil, err
 	}
+	new, e := newService(*old)
 	singleton := singleton[T]{
-		ig: newService,
+		ig: func() (instance T, err error) {
+			return new, e
+		},
 	}
 	_context.Store(name, &singleton)
 	values, ok := _refresh.Load(name)
@@ -94,7 +97,7 @@ func RefreshSinletonWithName[T any](name string, newService func() (instance T, 
 			value(REFRESHED)
 		}
 	}
-	return inst, nil
+	return old, nil
 }
 
 func OnRefresh[T any](cb func(Events)) {

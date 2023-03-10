@@ -23,85 +23,13 @@ func TestService(t *testing.T) {
 	Bootstrapper()
 	<-time.After(time.Second)
 	go func() {
-		inst, err := di.RefreshSinletonWithName("nats", func() (*nats.Conn, error) {
+		_, err := di.RefreshSinletonWithName("nats", func(current *nats.Conn) (*nats.Conn, error) {
+			current.Drain()
 			return nats.Connect("127.0.0.1:4222")
 		})
 		if err != nil {
 			log.Fatal(err)
 		}
-		(*inst).Close()
-	}()
-	go func() {
-		inst, err := di.RefreshSinletonWithName("nats", func() (*nats.Conn, error) {
-			return nats.Connect("127.0.0.1:4222")
-		})
-		if err != nil {
-			log.Fatal(err)
-		}
-		(*inst).Close()
-	}()
-	go func() {
-		inst, err := di.RefreshSinletonWithName("nats", func() (*nats.Conn, error) {
-			return nats.Connect("127.0.0.1:4222")
-		})
-		if err != nil {
-			log.Fatal(err)
-		}
-		(*inst).Close()
-	}()
-	go func() {
-		inst, err := di.RefreshSinletonWithName("nats", func() (*nats.Conn, error) {
-			return nats.Connect("127.0.0.1:4222")
-		})
-		if err != nil {
-			log.Fatal(err)
-		}
-		(*inst).Close()
-	}()
-	go func() {
-		inst, err := di.RefreshSinletonWithName("nats", func() (*nats.Conn, error) {
-			return nats.Connect("127.0.0.1:4222")
-		})
-		if err != nil {
-			log.Fatal(err)
-		}
-		(*inst).Close()
-	}()
-	go func() {
-		inst, err := di.RefreshSinletonWithName("nats", func() (*nats.Conn, error) {
-			return nats.Connect("127.0.0.1:4222")
-		})
-		if err != nil {
-			log.Fatal(err)
-		}
-		(*inst).Close()
-	}()
-	go func() {
-		inst, err := di.RefreshSinletonWithName("nats", func() (*nats.Conn, error) {
-			return nats.Connect("127.0.0.1:4222")
-		})
-		if err != nil {
-			log.Fatal(err)
-		}
-		(*inst).Close()
-	}()
-	go func() {
-		inst, err := di.RefreshSinletonWithName("nats", func() (*nats.Conn, error) {
-			return nats.Connect("127.0.0.1:4222")
-		})
-		if err != nil {
-			log.Fatal(err)
-		}
-		(*inst).Close()
-	}()
-	go func() {
-		inst, err := di.RefreshSinletonWithName("nats", func() (*nats.Conn, error) {
-			return nats.Connect("127.0.0.1:4222")
-		})
-		if err != nil {
-			log.Fatal(err)
-		}
-		(*inst).Close()
 	}()
 	<-time.After(time.Second * 10)
 }

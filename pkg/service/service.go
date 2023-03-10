@@ -92,6 +92,9 @@ func (t *NATSService) Start() error {
 	return nil
 }
 func (t NATSService) Shutdown() error {
+	if t.conn.IsDraining() || t.conn.IsClosed() {
+		return nil
+	}
 	return t.subscription.Unsubscribe()
 }
 func (t NATSService) Reload() chan ReloadStates {
