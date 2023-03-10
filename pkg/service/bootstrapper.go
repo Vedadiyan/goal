@@ -12,7 +12,7 @@ type ReloadStates int
 const (
 	RELOADING ReloadStates = iota
 	RELOADED
-	ACK
+	READY
 	ERROR
 )
 
@@ -76,7 +76,7 @@ func starter(service Service) {
 						log.Fatalln(err)
 						return
 					}
-					reloadChan <- ACK
+					reloadChan <- READY
 					log.Println("reloading done")
 				}
 			case RELOADED:

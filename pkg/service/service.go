@@ -34,8 +34,7 @@ func (t *NATSService) Configure(b bool) {
 	if !b {
 		di.OnRefreshWithName(t.connName, func(e di.Events) {
 			t.reloadState <- RELOADING
-			res := <-t.reloadState
-			if res == ACK {
+			if READY == <-t.reloadState {
 				t.reloadState <- RELOADED
 				return
 			}
