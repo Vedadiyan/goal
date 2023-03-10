@@ -175,6 +175,17 @@ func RefreshScopedWithName[T any](name string, service func() (instance T, err e
 	return nil
 }
 
+func Has[T any]() bool {
+	name := nameOf[T]()
+	_, ok := _context.Load(name)
+	return ok
+}
+
+func HasWithName(name string) bool {
+	_, ok := _context.Load(name)
+	return ok
+}
+
 func ResolveOrPanic[T any](options *options) *T {
 	value, err := Resolve[T](options)
 	if err != nil {
