@@ -32,13 +32,14 @@ type NATSService struct {
 
 func (t *NATSService) Configure(b bool) {
 	if !b {
-		di.OnSingletonRefreshWithName(t.connName, func(e di.Events) {
-			if e == di.REFRESHED {
+		di.OnRefreshWithName(t.connName, func(e di.Events) {
+			t.reloadState <- RELOADING
+			res := <-t.reloadState
+			if res == ACK {
 				t.conn = *di.ResolveWithNameOrPanic[*nats.Conn](t.connName, nil)
 				t.reloadState <- RELOADED
 				return
 			}
-			t.reloadState <- RELOADING
 		})
 		return
 	}
@@ -96,7 +97,7 @@ func (t *NATSService) Start() error {
 func (t NATSService) Shutdown() error {
 	return t.subscription.Unsubscribe()
 }
-func (t NATSService) Reload() <-chan ReloadStates {
+func (t NATSService) Reload() chan ReloadStates {
 	return t.reloadState
 }
 func (t NATSService) handler(msg *nats.Msg) {

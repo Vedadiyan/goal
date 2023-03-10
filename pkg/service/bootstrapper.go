@@ -11,6 +11,8 @@ type ReloadStates int
 const (
 	RELOADING ReloadStates = iota
 	RELOADED
+	ACK
+	ERROR
 )
 
 var _services sync.Pool
@@ -19,7 +21,7 @@ type Service interface {
 	Configure(bool)
 	Start() error
 	Shutdown() error
-	Reload() <-chan ReloadStates
+	Reload() chan ReloadStates
 }
 
 func Register(service Service) {
@@ -52,12 +54,18 @@ func starter(service Service) {
 		return
 	}
 	go func(service Service) {
+		reloadChan := service.Reload()
 	LOOP:
-		for value := range service.Reload() {
+		for value := range reloadChan {
 			switch value {
 			case RELOADING:
 				{
-					service.Shutdown()
+					err := service.Shutdown()
+					if err != nil {
+						reloadChan <- ERROR
+						return
+					}
+					reloadChan <- ACK
 				}
 			case RELOADED:
 				{

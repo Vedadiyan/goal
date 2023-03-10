@@ -16,6 +16,8 @@ func handler(request proto.Message) (proto.Message, error) {
 }
 
 func init() {
-	nats := config_auto.New("", true, func(value string) {})
+	nats := config_auto.New("", true, func(value string) {
+
+	})
 	config_auto.Register(nats)
 }
