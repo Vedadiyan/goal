@@ -17,15 +17,16 @@ const (
 )
 
 const (
-	REFRESHING Events = iota
-	REFRESHED
+	REFRESHED Events = iota
 )
 
 var (
-	_singletonRefresh sync.Map
-	_contextTypes     sync.Map
-	_context          sync.Map
-	_scopedContext    sync.Map
+	_refresh       sync.Map
+	_contextTypes  sync.Map
+	_context       sync.Map
+	_scopedContext sync.Map
+
+	_refreshMute sync.Mutex
 )
 
 type options struct {
@@ -71,42 +72,46 @@ func AddSinletonWithName[T any](name string, service func() (instance T, err err
 	return nil
 }
 
-func RefreshSinleton[T any](service func() (instance T, err error)) error {
+func RefreshSinleton[T any](service func(current T) (instance T, err error)) (*T, error) {
 	name := nameOf[T]()
 	return RefreshSinletonWithName(name, service)
 }
 
-func RefreshSinletonWithName[T any](name string, service func() (instance T, err error)) error {
-	values, ok := _singletonRefresh.Load(name)
-	if ok {
-		for _, value := range values.([]func(Events)) {
-			value(REFRESHING)
-		}
+func RefreshSinletonWithName[T any](name string, newService func(current T) (instance T, err error)) (*T, error) {
+	_refreshMute.Lock()
+	defer _refreshMute.Unlock()
+	old, err := ResolveWithName[T](name, nil)
+	if err != nil {
+		return nil, err
 	}
+	new, e := newService(*old)
 	singleton := singleton[T]{
-		ig: service,
+		ig: func() (instance T, err error) {
+			return new, e
+		},
 	}
 	_context.Store(name, &singleton)
+	values, ok := _refresh.Load(name)
 	if ok {
 		for _, value := range values.([]func(Events)) {
 			value(REFRESHED)
 		}
 	}
-	return nil
+	return old, nil
 }
 
-func OnSingletonRefresh[T any](cb func(Events)) {
+func OnRefresh[T any](cb func(Events)) {
 	name := nameOf[T]()
-	OnSingletonRefreshWithName(name, cb)
+	OnRefreshWithName(name, cb)
 }
 
-func OnSingletonRefreshWithName(name string, cb func(Events)) {
-	value, ok := _singletonRefresh.Load(name)
+func OnRefreshWithName(name string, cb func(Events)) {
+	value, ok := _refresh.Load(name)
 	if !ok {
 		value = make([]func(Events), 0)
 	}
 	value = append(value.([]func(Events)), cb)
-	_singletonRefresh.Store(name, value)
+	_refresh.Store(name, value)
 }
 
 func AddTransient[T any](service func() (instance T, err error)) error {
@@ -129,8 +134,16 @@ func RefreshTransient[T any](service func() (instance T, err error)) error {
 }
 
 func RefreshTransientWithName[T any](name string, service func() (instance T, err error)) error {
+	_refreshMute.Lock()
+	defer _refreshMute.Unlock()
 	_context.Store(name, service)
 	_contextTypes.Store(name, TRANSIENT)
+	values, ok := _refresh.Load(name)
+	if ok {
+		for _, value := range values.([]func(Events)) {
+			value(REFRESHED)
+		}
+	}
 	return nil
 }
 
@@ -153,8 +166,27 @@ func RefreshScoped[T any](service func() (instance T, err error)) error {
 }
 
 func RefreshScopedWithName[T any](name string, service func() (instance T, err error)) error {
+	_refreshMute.Lock()
+	defer _refreshMute.Unlock()
 	_contextTypes.Store(name, SCOPED)
+	values, ok := _refresh.Load(name)
+	if ok {
+		for _, value := range values.([]func(Events)) {
+			value(REFRESHED)
+		}
+	}
 	return nil
+}
+
+func Has[T any]() bool {
+	name := nameOf[T]()
+	_, ok := _context.Load(name)
+	return ok
+}
+
+func HasWithName(name string) bool {
+	_, ok := _context.Load(name)
+	return ok
 }
 
 func ResolveOrPanic[T any](options *options) *T {

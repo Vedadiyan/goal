@@ -52,10 +52,16 @@ func Delete(key string) error {
 }
 
 func Set(key string, value any) error {
-	if _, ok := _store.Load(key); !ok {
-		return KEY_NOT_FOUND
-	}
 	_store.Store(key, value)
+	raise(SET, key, value)
+	return nil
+}
+
+func SetWithTTL(key string, value any, ttl time.Duration) error {
+	_store.Store(key, value)
+	time.AfterFunc(ttl, func() {
+		Delete(key)
+	})
 	raise(SET, key, value)
 	return nil
 }

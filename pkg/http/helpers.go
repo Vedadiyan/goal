@@ -21,12 +21,14 @@ func SendWithContext[T string | JSON | XML | URLEncoded | []byte](ctx context.Co
 		headers = NewWebHeaderCollection()
 	}
 	rqType, readCloser := GetRequest(request)
+	if value, _ := headers.Get("content-type"); value == "" {
+		headers.Add("content-type", rqType)
+	}
 	rq := httpRequest{
-		url:         url,
-		contentType: rqType,
-		headers:     headers,
-		method:      method,
-		reader:      readCloser,
+		url:     url,
+		headers: headers,
+		method:  method,
+		reader:  readCloser,
 	}
 	response, err := GetHttpClient().Send(ctx, &rq)
 	if err != nil {

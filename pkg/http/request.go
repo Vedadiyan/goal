@@ -18,20 +18,18 @@ type IHttpReuqest interface {
 }
 
 type httpRequest struct {
-	url         *url.URL
-	contentType string
-	headers     IWebHeaderCollection
-	method      Method
-	reader      io.ReadCloser
+	url     *url.URL
+	headers IWebHeaderCollection
+	method  Method
+	reader  io.ReadCloser
 }
 
 func NewHttpRequest(url *url.URL, method Method, contentType string, headers IWebHeaderCollection, reader io.Reader) IHttpReuqest {
 	httpRequest := httpRequest{
-		url:         url,
-		contentType: contentType,
-		headers:     headers,
-		method:      method,
-		reader:      io.NopCloser(reader),
+		url:     url,
+		headers: headers,
+		method:  method,
+		reader:  io.NopCloser(reader),
 	}
 	return &httpRequest
 }
@@ -41,7 +39,8 @@ func (httpRequest httpRequest) Url() *url.URL {
 }
 
 func (httpRequest httpRequest) ContentType() string {
-	return httpRequest.contentType
+	value, _ := httpRequest.headers.Get("content-type")
+	return value
 }
 
 func (httpRequest httpRequest) Headers() IWebHeaderCollection {
