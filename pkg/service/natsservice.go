@@ -14,14 +14,12 @@ import (
 
 type Option func(*NATSServiceOptions)
 
-type Handler[TReq proto.Message] func(TReq) (proto.Message, error)
-
 type NATSServiceOptions struct {
 	isCached bool
 	ttl      time.Duration
 }
 
-type NATSService[TReq proto.Message] struct {
+type NATSService[TReq proto.Message, TRes proto.Message, TFuncType ~func(TReq) (TRes, error)] struct {
 	conn         *nats.Conn
 	codec        *codecs.CompressedProtoConn
 	reloadState  chan ReloadStates
@@ -30,11 +28,11 @@ type NATSService[TReq proto.Message] struct {
 	connName     string
 	namespace    string
 	queue        string
-	handlerFn    Handler[TReq]
+	handlerFn    TFuncType
 	options      *NATSServiceOptions
 }
 
-func (t *NATSService[TReq]) Configure(b bool) {
+func (t *NATSService[TReq, TRes, TFuncType]) Configure(b bool) {
 	if !b {
 		di.OnRefreshWithName(t.connName, func(e di.Events) {
 			t.reloadState <- RELOADING
@@ -46,7 +44,7 @@ func (t *NATSService[TReq]) Configure(b bool) {
 	}
 	t.conn = *di.ResolveWithNameOrPanic[*nats.Conn](t.connName, nil)
 }
-func (t *NATSService[TReq]) configureCache() error {
+func (t *NATSService[TReq, TRes, TFuncType]) configureCache() error {
 	js, err := t.conn.JetStream()
 	if err != nil {
 		return err
@@ -77,7 +75,7 @@ func (t *NATSService[TReq]) configureCache() error {
 	t.bucket = &bucket
 	return nil
 }
-func (t *NATSService[TReq]) Start() error {
+func (t *NATSService[TReq, TRes, TFuncType]) Start() error {
 	if t.options.isCached {
 		err := t.configureCache()
 		if err != nil {
@@ -95,16 +93,16 @@ func (t *NATSService[TReq]) Start() error {
 	t.subscription = subs
 	return nil
 }
-func (t NATSService[TReq]) Shutdown() error {
+func (t NATSService[TReq, TRes, TFuncType]) Shutdown() error {
 	if t.conn.IsDraining() || t.conn.IsClosed() {
 		return nil
 	}
 	return t.subscription.Unsubscribe()
 }
-func (t NATSService[TReq]) Reload() chan ReloadStates {
+func (t NATSService[TReq, TRes, TFuncType]) Reload() chan ReloadStates {
 	return t.reloadState
 }
-func (t NATSService[TReq]) handler(msg *nats.Msg) {
+func (t NATSService[TReq, TRes, TFuncType]) handler(msg *nats.Msg) {
 	insight := insight.New(t.namespace, msg.Reply)
 	defer insight.Close()
 	var request TReq
@@ -181,8 +179,8 @@ func GetHash(bytes []byte) (string, error) {
 	return base64.StdEncoding.EncodeToString(requestHash), nil
 }
 
-func New[TReq proto.Message](connName string, namespace string, queue string, handlerFn Handler[TReq], options ...Option) *NATSService[TReq] {
-	service := NATSService[TReq]{
+func New[TReq proto.Message, TRes proto.Message, TFuncType ~func(TReq) (TRes, error)](connName string, namespace string, queue string, handlerFn TFuncType, options ...Option) *NATSService[TReq, TRes, TFuncType] {
+	service := NATSService[TReq, TRes, TFuncType]{
 		namespace:   namespace,
 		queue:       queue,
 		handlerFn:   handlerFn,
