@@ -3,6 +3,7 @@ package service
 import (
 	"crypto/sha256"
 	"encoding/base64"
+	"strings"
 	"time"
 
 	"github.com/nats-io/nats.go"
@@ -29,7 +30,7 @@ type NATSService[TReq proto.Message, TRes proto.Message, TFuncType ~func(TReq) (
 	namespace    string
 	queue        string
 	handlerFn    TFuncType
-	options      *NATSServiceOptions
+	options      NATSServiceOptions
 }
 
 func (t *NATSService[TReq, TRes, TFuncType]) Configure(b bool) {
@@ -51,15 +52,16 @@ func (t *NATSService[TReq, TRes, TFuncType]) configureCache() error {
 	}
 	buckets := js.KeyValueStoreNames()
 	bucketExists := false
+	bucketName := strings.ReplaceAll(t.namespace, ".", "_")
 	for bucket := range buckets {
-		if bucket == t.namespace {
+		if bucket == bucketName {
 			bucketExists = true
 			break
 		}
 	}
 	if !bucketExists {
 		bucket, err := js.CreateKeyValue(&nats.KeyValueConfig{
-			Bucket: t.namespace,
+			Bucket: bucketName,
 			TTL:    t.options.ttl,
 		})
 		if err != nil {
@@ -68,7 +70,7 @@ func (t *NATSService[TReq, TRes, TFuncType]) configureCache() error {
 		t.bucket = &bucket
 		return nil
 	}
-	bucket, err := js.KeyValue(t.namespace)
+	bucket, err := js.KeyValue(bucketName)
 	if err != nil {
 		return err
 	}
@@ -188,7 +190,7 @@ func New[TReq proto.Message, TRes proto.Message, TFuncType ~func(TReq) (TRes, er
 		reloadState: make(chan ReloadStates),
 	}
 	for _, option := range options {
-		option(service.options)
+		option(&service.options)
 	}
 	return &service
 }
