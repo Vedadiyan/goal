@@ -5,8 +5,9 @@ import (
 )
 
 type FiberGateway struct {
-	route     string
-	endpoints map[string]map[string]func(c *fiber.Ctx) error
+	route       string
+	endpoints   map[string]map[string]func(c *fiber.Ctx) error
+	initializer func()
 }
 
 func (a *FiberGateway) Add(name string, method string, fn func(c *fiber.Ctx) error) {
@@ -16,10 +17,11 @@ func (a *FiberGateway) Add(name string, method string, fn func(c *fiber.Ctx) err
 	a.endpoints[name][method] = fn
 }
 
-func New(route string) *FiberGateway {
+func New(route string, initializer func()) *FiberGateway {
 	apiGateway := FiberGateway{
-		route:     route,
-		endpoints: make(map[string]map[string]func(c *fiber.Ctx) error),
+		route:       route,
+		endpoints:   make(map[string]map[string]func(c *fiber.Ctx) error),
+		initializer: initializer,
 	}
 	return &apiGateway
 }

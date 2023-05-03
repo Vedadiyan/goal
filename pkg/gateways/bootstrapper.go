@@ -19,6 +19,7 @@ func Bootstrap(app *fiber.App) {
 			break
 		}
 		gateway := value.(*FiberGateway)
+		gateway.initializer()
 		for key, endpoint := range gateway.endpoints {
 			for method, handler := range endpoint {
 				app.Add(method, fmt.Sprintf("%s/%s", gateway.route, key), handler)
