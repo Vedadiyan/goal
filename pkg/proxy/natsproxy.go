@@ -14,6 +14,7 @@ type NATSProxy[TResponse proto.Message] struct {
 	conn      *nats.Conn
 	codec     codecs.CompressedProtoConn
 	namespace string
+	new       func() TResponse
 }
 
 func (p NATSProxy[TResponse]) Send(request proto.Message) (*TResponse, error) {
@@ -21,7 +22,7 @@ func (p NATSProxy[TResponse]) Send(request proto.Message) (*TResponse, error) {
 	if err != nil {
 		return nil, err
 	}
-	msg, err := p.conn.Request(p.namespace, enc, time.Second)
+	msg, err := p.conn.Request(p.namespace, enc, time.Hour)
 	if err != nil {
 		return nil, err
 	}
@@ -29,19 +30,20 @@ func (p NATSProxy[TResponse]) Send(request proto.Message) (*TResponse, error) {
 	if status != "SUCCESS" {
 		return nil, fmt.Errorf(status)
 	}
-	var res TResponse
+	res := p.new()
 	err = p.codec.Decode(p.namespace, msg.Data, res)
 	if err != nil {
 		return nil, err
 	}
 	return &res, nil
 }
-func New[TResponse proto.Message](connName string, namespace string) *NATSProxy[TResponse] {
+func New[TResponse proto.Message](connName string, namespace string, newRes func() TResponse) *NATSProxy[TResponse] {
 	conn := *di.ResolveWithNameOrPanic[*nats.Conn](connName, nil)
 	natsProxy := NATSProxy[TResponse]{
 		namespace: namespace,
 		conn:      conn,
 		codec:     codecs.CompressedProtoConn{},
+		new:       newRes,
 	}
 	di.OnRefreshWithName(connName, func(e di.Events) {
 		natsProxy.conn = *di.ResolveWithNameOrPanic[*nats.Conn](connName, nil)

@@ -31,6 +31,8 @@ type NATSService[TReq proto.Message, TRes proto.Message, TFuncType ~func(TReq) (
 	queue        string
 	handlerFn    TFuncType
 	options      NATSServiceOptions
+	newReq       func() TReq
+	newRes       func() TRes
 }
 
 func (t *NATSService[TReq, TRes, TFuncType]) Configure(b bool) {
@@ -107,7 +109,7 @@ func (t NATSService[TReq, TRes, TFuncType]) Reload() chan ReloadStates {
 func (t NATSService[TReq, TRes, TFuncType]) handler(msg *nats.Msg) {
 	insight := insight.New(t.namespace, msg.Reply)
 	defer insight.Close()
-	var request TReq
+	request := t.newReq()
 	headers := nats.Header{}
 	outMsg := &nats.Msg{Subject: msg.Reply, Header: headers}
 	if t.options.isCached {
@@ -130,7 +132,7 @@ func (t NATSService[TReq, TRes, TFuncType]) handler(msg *nats.Msg) {
 			return
 		}
 	}
-	err := t.codec.Decode(msg.Subject, msg.Data, &request)
+	err := t.codec.Decode(msg.Subject, msg.Data, request)
 	if err != nil {
 		headers.Add("status", "FAIL:DECODE")
 		msg.RespondMsg(outMsg)
@@ -181,13 +183,16 @@ func GetHash(bytes []byte) (string, error) {
 	return base64.StdEncoding.EncodeToString(requestHash), nil
 }
 
-func New[TReq proto.Message, TRes proto.Message, TFuncType ~func(TReq) (TRes, error)](connName string, namespace string, queue string, handlerFn TFuncType, options ...Option) *NATSService[TReq, TRes, TFuncType] {
+func New[TReq proto.Message, TRes proto.Message, TFuncType ~func(TReq) (TRes, error)](connName string, namespace string, queue string, handlerFn TFuncType, newReq func() TReq, newRes func() TRes, options ...Option) *NATSService[TReq, TRes, TFuncType] {
 	service := NATSService[TReq, TRes, TFuncType]{
 		namespace:   namespace,
 		queue:       queue,
 		handlerFn:   handlerFn,
 		connName:    connName,
 		reloadState: make(chan ReloadStates),
+		newReq:      newReq,
+		newRes:      newRes,
+		codec:       &codecs.CompressedProtoConn{},
 	}
 	for _, option := range options {
 		option(&service.options)
