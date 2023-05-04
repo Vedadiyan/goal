@@ -119,6 +119,9 @@ func unmarshallerNext(data any, fd protoreflect.FieldDescriptor, index int, mess
 					}
 				default:
 					{
+						if value == nil {
+							continue
+						}
 						err := unmarshallerSetValue(value, fields, key, message)
 						if err != nil {
 							return err
