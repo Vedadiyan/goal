@@ -178,7 +178,7 @@ func GetHash(bytes []byte) (string, error) {
 		return "", err
 	}
 	requestHash := sha256.Sum(nil)
-	return base64.StdEncoding.EncodeToString(requestHash), nil
+	return base64.URLEncoding.EncodeToString(requestHash), nil
 }
 
 func New[TReq proto.Message, TRes proto.Message, TFuncType ~func(TReq) (TRes, error)](connName string, namespace string, queue string, handlerFn TFuncType, newReq func() TReq, newRes func() TRes, options ...Option) *NATSService[TReq, TRes, TFuncType] {
