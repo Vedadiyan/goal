@@ -107,19 +107,21 @@ func (t NATSService[TReq, TRes, TFuncType]) Reload() chan ReloadStates {
 	return t.reloadState
 }
 func (t NATSService[TReq, TRes, TFuncType]) handler(msg *nats.Msg) {
+	var requestHash string
 	insight := insight.New(t.namespace, msg.Reply)
 	defer insight.Close()
 	request := t.newReq()
 	headers := nats.Header{}
 	outMsg := &nats.Msg{Subject: msg.Reply, Header: headers}
 	if t.options.isCached {
-		requestHash, err := GetHash(msg.Data)
+		_requestHash, err := GetHash(msg.Data)
 		if err != nil {
 			headers.Add("status", "FAIL:REQUEST:HASH")
 			msg.RespondMsg(outMsg)
 			insight.Error(err)
 			return
 		}
+		requestHash = _requestHash
 		value, err := (*t.bucket).Get(requestHash)
 		if err == nil {
 			headers.Add("status", "SUCCESS")
@@ -155,14 +157,10 @@ func (t NATSService[TReq, TRes, TFuncType]) handler(msg *nats.Msg) {
 		return
 	}
 	if t.options.isCached {
-		requestHash, err := GetHash(bytes)
+		_, err = (*t.bucket).Create(requestHash, bytes)
 		if err != nil {
-			headers.Add("status", "FAIL:REQUEST:HASH")
-			msg.RespondMsg(outMsg)
-			insight.Error(err)
-			return
+			insight.Warn(err)
 		}
-		(*t.bucket).Create(requestHash, bytes)
 	}
 	headers.Add("status", "SUCCESS")
 	outMsg.Data = bytes

@@ -5,7 +5,7 @@ import (
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
-func Unmarshal(data map[string]any, message proto.Message) error {
+func Unmarshal(data any, message proto.Message) error {
 	return unmarshallerNext(data, nil, -1, message)
 }
 func unmarshallerSet(data any, fd protoreflect.FieldDescriptor, message proto.Message) {
@@ -96,27 +96,41 @@ func unmarshallerSetValue(value any, fields protoreflect.FieldDescriptors, name 
 	message.ProtoReflect().Set(f, protoreflect.ValueOf(value))
 	return nil
 }
-func unmarshallerNext(data map[string]any, fd protoreflect.FieldDescriptor, index int, message proto.Message) error {
+func unmarshallerNext(data any, fd protoreflect.FieldDescriptor, index int, message proto.Message) error {
 	fields := message.ProtoReflect().Descriptor().Fields()
-	for key, value := range data {
-		switch t := value.(type) {
-		case map[string]any:
-			{
-				err := unmarshallerSetObject(t, fields, key, message)
-				if err != nil {
-					return err
+	switch t := data.(type) {
+	case map[string]any:
+		{
+			for key, value := range t {
+				switch t := value.(type) {
+				case map[string]any:
+					{
+						err := unmarshallerSetObject(t, fields, key, message)
+						if err != nil {
+							return err
+						}
+					}
+				case []any:
+					{
+						err := unmarshallerSetList(t, fields, fd, key, message)
+						if err != nil {
+							return err
+						}
+					}
+				default:
+					{
+						err := unmarshallerSetValue(value, fields, key, message)
+						if err != nil {
+							return err
+						}
+					}
 				}
 			}
-		case []any:
-			{
-				err := unmarshallerSetList(t, fields, fd, key, message)
-				if err != nil {
-					return err
-				}
-			}
-		default:
-			{
-				err := unmarshallerSetValue(value, fields, key, message)
+		}
+	case []any:
+		{
+			for _, value := range t {
+				err := unmarshallerNext(value, fd, index, message)
 				if err != nil {
 					return err
 				}
