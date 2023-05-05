@@ -52,9 +52,6 @@ func (httpRequest httpRequest) Method() Method {
 }
 
 func (httpRequest httpRequest) Reader() io.ReadCloser {
-	if httpRequest.method == GET {
-		return io.NopCloser(bytes.NewBuffer([]byte{}))
-	}
 	return httpRequest.reader
 }
 
