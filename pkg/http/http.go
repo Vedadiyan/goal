@@ -1,7 +1,6 @@
 package http
 
 import (
-	"bytes"
 	"context"
 	"log"
 	"net/http"
@@ -57,9 +56,9 @@ func send(httpClient *httpClient, ctx context.Context, httpRequest IHttpReuqest)
 	url := httpRequest.Url()
 	var request *http.Request
 	if !IsDebug {
-		request, err = http.NewRequestWithContext(ctx, string(httpRequest.Method()), url.String(), bytes.NewBuffer([]byte{}))
+		request, err = http.NewRequestWithContext(ctx, string(httpRequest.Method()), url.String(), httpRequest.Reader())
 	} else {
-		request, err = http.NewRequestWithContext(httptrace.WithClientTrace(ctx, debugConnectionReuse()), string(httpRequest.Method()), url.String(), bytes.NewBuffer([]byte{}))
+		request, err = http.NewRequestWithContext(httptrace.WithClientTrace(ctx, debugConnectionReuse()), string(httpRequest.Method()), url.String(), httpRequest.Reader())
 	}
 	if err != nil {
 		return nil, err

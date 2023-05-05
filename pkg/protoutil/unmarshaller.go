@@ -10,11 +10,11 @@ func Unmarshal(data any, message proto.Message) error {
 }
 func unmarshallerSet(data any, fd protoreflect.FieldDescriptor, message proto.Message) {
 	if !fd.IsList() {
-		message.ProtoReflect().Set(fd, protoreflect.ValueOf(data))
+		message.ProtoReflect().Set(fd, protoreflect.ValueOf(castType(data)))
 		return
 	}
 	ls := message.(protoreflect.List)
-	ls.Append(protoreflect.ValueOf(data))
+	ls.Append(protoreflect.ValueOf(castType(data)))
 }
 func unmarshallerSetList(data []any, fields protoreflect.FieldDescriptors, fd protoreflect.FieldDescriptor, name string, message proto.Message) error {
 	f := unmarshallerGetField(fields, name)
@@ -35,7 +35,7 @@ func unmarshallerSetList(data []any, fields protoreflect.FieldDescriptors, fd pr
 			}
 		default:
 			{
-				ref.Append(protoreflect.ValueOf(data[i]))
+				ref.Append(protoreflect.ValueOf(castType(data[i])))
 			}
 		}
 	}
@@ -76,7 +76,7 @@ func unmarshallerSetOneOf(value any, field protoreflect.FieldDescriptor, name st
 		}
 	default:
 		{
-			message.ProtoReflect().Set(f, protoreflect.ValueOf(value))
+			message.ProtoReflect().Set(f, protoreflect.ValueOf(castType(value)))
 		}
 	}
 	return nil
@@ -93,7 +93,7 @@ func unmarshallerSetValue(value any, fields protoreflect.FieldDescriptors, name 
 		}
 		return nil
 	}
-	message.ProtoReflect().Set(f, protoreflect.ValueOf(value))
+	message.ProtoReflect().Set(f, protoreflect.ValueOf(castType(value)))
 	return nil
 }
 func unmarshallerNext(data any, fd protoreflect.FieldDescriptor, index int, message proto.Message) error {
@@ -141,4 +141,17 @@ func unmarshallerNext(data any, fd protoreflect.FieldDescriptor, index int, mess
 		}
 	}
 	return nil
+}
+
+func castType(value any) any {
+	switch t := value.(type) {
+	case int:
+		{
+			return int32(t)
+		}
+	default:
+		{
+			return t
+		}
+	}
 }
