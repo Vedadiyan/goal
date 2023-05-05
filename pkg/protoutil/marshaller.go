@@ -61,7 +61,9 @@ func marshallerNext(message proto.Message, name string, v map[string]any) error 
 				if err != nil {
 					return err
 				}
+				continue
 			}
+			marshallerSetValue([]any{}, name, -1, -1, v)
 			continue
 		}
 		switch field.Kind() {
