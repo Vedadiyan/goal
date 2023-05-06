@@ -31,6 +31,7 @@ func NewHttpRequest(url *url.URL, method Method, contentType string, headers IWe
 		method:  method,
 		reader:  io.NopCloser(reader),
 	}
+	httpRequest.headers.Add("content-type", contentType)
 	return &httpRequest
 }
 
@@ -52,6 +53,9 @@ func (httpRequest httpRequest) Method() Method {
 }
 
 func (httpRequest httpRequest) Reader() io.ReadCloser {
+	if httpRequest.method == GET {
+		return io.NopCloser(bytes.NewBuffer([]byte{}))
+	}
 	return httpRequest.reader
 }
 

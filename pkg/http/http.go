@@ -66,9 +66,6 @@ func send(httpClient *httpClient, ctx context.Context, httpRequest IHttpReuqest)
 	defer func() {
 		request.Body.Close()
 	}()
-	if httpRequest.ContentType() != "" {
-		request.Header.Add("Content-Type", httpRequest.ContentType())
-	}
 	if httpRequest.Headers() != nil {
 		httpRequest.Headers().Copy(&request.Header)
 	}
