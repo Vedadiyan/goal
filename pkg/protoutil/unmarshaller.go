@@ -56,6 +56,29 @@ func unmarshallerSetObject(data map[string]any, fields protoreflect.FieldDescrip
 	if f == nil {
 		return nil
 	}
+	if f.IsMap() {
+		ref := message.ProtoReflect().Mutable(f).Map()
+		for key, value := range data {
+			switch t := value.(type) {
+			case map[string]any:
+				{
+					// WARNING: UNTESTED CODE
+					value := ref.NewValue().Message().Interface()
+					err := unmarshallerNext(t, f, -1, value)
+					if err != nil {
+						return err
+					}
+					ref.Set(protoreflect.ValueOf(key).MapKey(), protoreflect.ValueOf(value))
+				}
+			default:
+				{
+					ref.Set(protoreflect.ValueOf(key).MapKey(), protoreflect.ValueOf(value))
+				}
+			}
+		}
+		message.ProtoReflect().Set(f, protoreflect.ValueOfMap(ref))
+		return nil
+	}
 	ref := message.ProtoReflect().Mutable(f).Message()
 	err := unmarshallerNext(data, f, -1, ref.Interface())
 	if err != nil {
