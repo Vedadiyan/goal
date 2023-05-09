@@ -134,12 +134,14 @@ func (t NATSService[TReq, TRes, TFuncType]) handler(msg *nats.Msg) {
 			return
 		}
 	}
-	err := t.codec.Decode(msg.Subject, msg.Data, request)
-	if err != nil {
-		headers.Add("status", "FAIL:DECODE")
-		msg.RespondMsg(outMsg)
-		insight.Error(err)
-		return
+	if len(msg.Data) > 0 {
+		err := t.codec.Decode(msg.Subject, msg.Data, request)
+		if err != nil {
+			headers.Add("status", "FAIL:DECODE")
+			msg.RespondMsg(outMsg)
+			insight.Error(err)
+			return
+		}
 	}
 	insight.Start(request)
 	response, err := t.handlerFn(request)
