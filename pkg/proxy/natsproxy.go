@@ -10,6 +10,18 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+type ProxyError string
+
+const (
+	_ENCODE_ERROR  ProxyError = ProxyError("encode error")
+	_DECODE_ERROR  ProxyError = ProxyError("decode error")
+	_GATEWAY_ERROR ProxyError = ProxyError("gateway error")
+)
+
+func (p ProxyError) Error() string {
+	return string(p)
+}
+
 type NATSProxy[TResponse proto.Message] struct {
 	conn      *nats.Conn
 	codec     codecs.CompressedProtoConn
@@ -20,20 +32,21 @@ type NATSProxy[TResponse proto.Message] struct {
 func (p NATSProxy[TResponse]) Send(request proto.Message) (*TResponse, error) {
 	enc, err := p.codec.Encode(p.namespace, request)
 	if err != nil {
-		return nil, err
+		return nil, _ENCODE_ERROR
 	}
 	msg, err := p.conn.Request(p.namespace, enc, time.Hour)
 	if err != nil {
-		return nil, err
+		return nil, _GATEWAY_ERROR
+
 	}
 	status := msg.Header.Get("status")
 	if status != "SUCCESS" {
-		return nil, fmt.Errorf(status)
+		return nil, fmt.Errorf("%s:%s", status, string(msg.Data))
 	}
 	res := p.new()
 	err = p.codec.Decode(p.namespace, msg.Data, res)
 	if err != nil {
-		return nil, err
+		return nil, _DECODE_ERROR
 	}
 	return &res, nil
 }
