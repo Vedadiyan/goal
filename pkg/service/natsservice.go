@@ -108,11 +108,15 @@ func (t NATSService[TReq, TRes, TFuncType]) Reload() chan ReloadStates {
 }
 func (t NATSService[TReq, TRes, TFuncType]) handler(msg *nats.Msg) {
 	var requestHash string
-	insight := insight.New(t.namespace, msg.Reply)
-	defer insight.Close()
-	request := t.newReq()
 	headers := nats.Header{}
 	outMsg := &nats.Msg{Subject: msg.Reply, Header: headers}
+	insight := insight.New(t.namespace, msg.Reply)
+	insight.OnFailure(func() {
+		headers.Add("status", "FAIL:RECOVERED")
+		msg.RespondMsg(outMsg)
+	})
+	defer insight.Close()
+	request := t.newReq()
 	if t.options.isCached {
 		_requestHash, err := GetHash(msg.Data)
 		if err != nil {
