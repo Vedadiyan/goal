@@ -2,6 +2,8 @@ package http
 
 import (
 	"context"
+	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"net/http/httptrace"
@@ -72,6 +74,13 @@ func send(httpClient *httpClient, ctx context.Context, httpRequest IHttpReuqest)
 	response, err := httpClient.httpClient.Do(request)
 	if err != nil {
 		return nil, err
+	}
+	if response.StatusCode > 399 && response.StatusCode <= 599 {
+		res, err := io.ReadAll(response.Body)
+		if err != nil {
+			return nil, fmt.Errorf("%d: %s", response.StatusCode, err.Error())
+		}
+		return nil, fmt.Errorf("%d: %s", response.StatusCode, string(res))
 	}
 	return &httpResponse{response: *response}, nil
 }
