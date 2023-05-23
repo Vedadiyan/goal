@@ -63,3 +63,20 @@ func New[TResponse proto.Message](connName string, namespace string, newRes func
 	})
 	return &natsProxy
 }
+
+func Create[TResponse any](connName string, namespace string) *NATSProxy[proto.Message] {
+	conn := *di.ResolveWithNameOrPanic[*nats.Conn](connName, nil)
+	natsProxy := NATSProxy[proto.Message]{
+		namespace: namespace,
+		conn:      conn,
+		codec:     codecs.CompressedProtoConn{},
+		new: func() proto.Message {
+			var res TResponse
+			return any(&res).(proto.Message)
+		},
+	}
+	di.OnRefreshWithName(connName, func(e di.Events) {
+		natsProxy.conn = *di.ResolveWithNameOrPanic[*nats.Conn](connName, nil)
+	})
+	return &natsProxy
+}
