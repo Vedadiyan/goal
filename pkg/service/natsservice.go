@@ -3,6 +3,7 @@ package service
 import (
 	"crypto/sha256"
 	"encoding/base64"
+	"fmt"
 	"strings"
 	"time"
 
@@ -56,7 +57,7 @@ func (t *NATSService[TReq, TRes, TFuncType]) configureCache() error {
 	bucketExists := false
 	bucketName := strings.ReplaceAll(t.namespace, ".", "_")
 	for bucket := range buckets {
-		if bucket == bucketName {
+		if bucket == fmt.Sprintf("KV_%s", bucketName) {
 			bucketExists = true
 			break
 		}

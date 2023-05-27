@@ -95,7 +95,7 @@ func Aggregated[TRequest any, TResponse any](app *fiber.App, uri string, method 
 }
 
 func Forward[TRequest any, TResponse any](uri string, method string, to any) {
-	_gateways.Put(func(app *fiber.App) {
+	_gateways = append(_gateways, func(app *fiber.App) {
 		switch t := to.(type) {
 		case string:
 			{
