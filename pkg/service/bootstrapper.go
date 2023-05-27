@@ -16,7 +16,8 @@ const (
 	ERROR
 )
 
-var _services sync.Pool
+var _services []any
+var _mute sync.Mutex
 var _skipInterrupt bool
 
 type Service interface {
@@ -26,17 +27,19 @@ type Service interface {
 	Reload() chan ReloadStates
 }
 
+func init() {
+	_mute.Lock()
+	_services = make([]any, 0)
+	_mute.Unlock()
+}
+
 func Register(service Service) {
-	_services.Put(service)
+	_services = append(_services, service)
 }
 
 func Bootstrapper() {
 	services := make([]Service, 0)
-	for {
-		service := _services.Get()
-		if service == nil {
-			break
-		}
+	for _, service := range _services {
 		services = append(services, service.(Service))
 	}
 	for _, service := range services {

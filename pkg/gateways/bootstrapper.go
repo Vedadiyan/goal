@@ -6,15 +6,13 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-var _gateways sync.Pool
+var (
+	_gateways []func(app *fiber.App)
+	_mut      sync.Mutex
+)
 
 func Bootstrap(app *fiber.App) {
-	for {
-		value := _gateways.Get()
-		if value == nil {
-			break
-		}
-		gateway := value.(func(app *fiber.App))
-		gateway(app)
+	for _, value := range _gateways {
+		value(app)
 	}
 }
