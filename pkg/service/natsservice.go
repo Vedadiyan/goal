@@ -81,6 +81,7 @@ func (t *NATSService[TReq, TRes, TFuncType]) configureCache() error {
 	return nil
 }
 func (t *NATSService[TReq, TRes, TFuncType]) Start() error {
+	panic("test")
 	if t.options.isCached {
 		err := t.configureCache()
 		if err != nil {
