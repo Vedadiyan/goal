@@ -12,7 +12,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func GetJSONReq[T proto.Message](c *fiber.Ctx, req T) error {
+func GetJSONReq[T proto.Message](c *fiber.Ctx, req T, useMeta bool) error {
 	values := make(map[string]any)
 	for _, key := range c.Route().Params {
 		values[key] = c.Params(key)
@@ -22,6 +22,11 @@ func GetJSONReq[T proto.Message](c *fiber.Ctx, req T) error {
 	})
 	if len(c.Body()) != 0 {
 		c.BodyParser(&values)
+	}
+	if useMeta {
+		meta := make(map[string]any)
+		meta["remote_ip"] = c.Context().RemoteIP()
+		values["meta"] = meta
 	}
 	out, err := json.Marshal(values)
 	if err != nil {
@@ -34,12 +39,12 @@ func GetJSONReq[T proto.Message](c *fiber.Ctx, req T) error {
 	return nil
 }
 
-func Single[TRequest any, TResponse any](app *fiber.App, uri string, method string, to string) *proxy.NATSProxy[proto.Message] {
+func Single[TRequest any, TResponse any](app *fiber.App, uri string, method string, to string, useMeta bool) *proxy.NATSProxy[proto.Message] {
 	proxy := proxy.Create[TResponse]("$etcd:/nats", to)
 	app.Add(method, uri, func(c *fiber.Ctx) error {
 		var inst TRequest
 		req := any(&inst).(proto.Message)
-		err := GetJSONReq(c, req)
+		err := GetJSONReq(c, req, useMeta)
 		if err != nil {
 			c.Status(fiber.StatusBadRequest)
 			return err
@@ -57,16 +62,16 @@ func Single[TRequest any, TResponse any](app *fiber.App, uri string, method stri
 	return proxy
 }
 
-func Aggregated[TRequest any, TResponse any](app *fiber.App, uri string, method string, to map[string]string) map[string]*proxy.NATSProxy[proto.Message] {
+func Aggregated[TRequest any, TResponse any](app *fiber.App, uri string, method string, to map[string]string, useMata bool) map[string]*proxy.NATSProxy[proto.Message] {
 	proxies := make(map[string]*proxy.NATSProxy[proto.Message])
 	for key, gateway := range to {
 		correctedURI := strings.TrimSuffix(uri, "/")
-		proxies[key] = Single[TRequest, TResponse](app, fmt.Sprintf("%s/%s", correctedURI, key), method, gateway)
+		proxies[key] = Single[TRequest, TResponse](app, fmt.Sprintf("%s/%s", correctedURI, key), method, gateway, useMata)
 	}
 	app.Add(method, uri, func(c *fiber.Ctx) error {
 		var inst TRequest
 		req := any(&inst).(proto.Message)
-		err := GetJSONReq(c, req)
+		err := GetJSONReq(c, req, useMata)
 		if err != nil {
 			c.Status(fiber.StatusBadRequest)
 			return err
@@ -94,16 +99,16 @@ func Aggregated[TRequest any, TResponse any](app *fiber.App, uri string, method 
 	return proxies
 }
 
-func Forward[TRequest any, TResponse any](uri string, method string, to any) {
+func Forward[TRequest any, TResponse any](uri string, method string, to any, useMeta bool) {
 	_gateways = append(_gateways, func(app *fiber.App) {
 		switch t := to.(type) {
 		case string:
 			{
-				Single[TRequest, TResponse](app, uri, method, t)
+				Single[TRequest, TResponse](app, uri, method, t, useMeta)
 			}
 		case map[string]string:
 			{
-				Aggregated[TRequest, TResponse](app, uri, method, t)
+				Aggregated[TRequest, TResponse](app, uri, method, t, useMeta)
 			}
 		}
 	})
