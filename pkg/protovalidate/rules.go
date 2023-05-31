@@ -22,6 +22,7 @@ func init() {
 	_rules["future_date"] = FutureDate
 	_rules["mix"] = Min
 	_rules["max"] = Max
+	_rules["regex"] = Regex
 }
 
 func Register(name string, fn func(name string, value any, rule string) error) {
@@ -93,7 +94,10 @@ func Email(name string, value any, rule string) error {
 		return fmt.Errorf("expected string but recieved %T", value)
 	}
 	pattern := `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`
-	ok, _ = regexp.MatchString(pattern, str)
+	ok, err := regexp.MatchString(pattern, str)
+	if err != nil {
+		return err
+	}
 	if !ok {
 		return Error(name, "invalid email")
 	}
@@ -141,6 +145,21 @@ func Max(name string, value any, rule string) error {
 	}
 	if val < i {
 		return Error(name, fmt.Sprintf("must be greater than or equal to %f", i))
+	}
+	return nil
+}
+
+func Regex(name string, value any, rule string) error {
+	str, ok := value.(string)
+	if !ok {
+		return fmt.Errorf("expected string but recieved %T", value)
+	}
+	ok, err := regexp.MatchString(rule, str)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return Error(name, fmt.Sprintf("must satisfy regex pattern: %s", rule))
 	}
 	return nil
 }
