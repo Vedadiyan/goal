@@ -152,6 +152,7 @@ func (t NATSService[TReq, TRes, TFuncType]) handler(msg *nats.Msg) {
 	response, err := t.handlerFn(request)
 	if err != nil {
 		headers.Add("status", "FAIL:HANDLE")
+		msg.Data = []byte(err.Error())
 		msg.RespondMsg(outMsg)
 		insight.Error(err)
 		return

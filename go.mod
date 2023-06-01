@@ -3,7 +3,6 @@ module github.com/vedadiyan/goal
 go 1.20
 
 require (
-	github.com/DataDog/zstd v1.5.5
 	github.com/gofiber/fiber/v2 v2.46.0
 	github.com/influxdata/influxdb-client-go/v2 v2.12.3
 	github.com/nats-io/nats.go v1.26.0

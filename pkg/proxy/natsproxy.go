@@ -41,7 +41,7 @@ func (p NATSProxy[TResponse]) Send(request proto.Message) (*TResponse, error) {
 	}
 	status := msg.Header.Get("status")
 	if status != "SUCCESS" {
-		return nil, fmt.Errorf("%s:%s", status, string(msg.Data))
+		return nil, fmt.Errorf(`{"status": "%s", "message": "%s"}`, status, string(msg.Data))
 	}
 	res := p.new()
 	err = p.codec.Decode(p.namespace, msg.Data, res)

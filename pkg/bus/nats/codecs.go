@@ -1,9 +1,11 @@
 package codecs
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 
-	"github.com/DataDog/zstd"
+	"github.com/klauspost/compress/zstd"
 	"github.com/nats-io/nats.go"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
@@ -73,10 +75,34 @@ func (CompressedProtoConn) Decode(subject string, data []byte, vPtr interface{})
 	return nil
 }
 
-func compress(data []byte) ([]byte, error) {
-	return zstd.Compress(nil, data)
+func compress(in []byte) ([]byte, error) {
+	var out bytes.Buffer
+	enc, err := zstd.NewWriter(&out)
+	if err != nil {
+		return nil, err
+	}
+	_, err = io.Copy(enc, bytes.NewBuffer(in))
+	if err != nil {
+		enc.Close()
+		return nil, err
+	}
+	err = enc.Close()
+	if err != nil {
+		return nil, err
+	}
+	return out.Bytes(), nil
 }
 
-func decompress(data []byte) ([]byte, error) {
-	return zstd.Decompress(nil, data)
+func decompress(in []byte) ([]byte, error) {
+	var out bytes.Buffer
+	enc, err := zstd.NewReader(bytes.NewBuffer(in))
+	if err != nil {
+		return nil, err
+	}
+	defer enc.Close()
+	_, err = io.Copy(&out, enc)
+	if err != nil {
+		return nil, err
+	}
+	return out.Bytes(), nil
 }
