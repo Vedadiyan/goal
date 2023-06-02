@@ -7,7 +7,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/vedadiyan/goal/pkg/protoutil"
-	protoval "github.com/vedadiyan/goal/pkg/protovalidate"
+	protoval "github.com/vedadiyan/goal/pkg/protoval"
 	"github.com/vedadiyan/goal/pkg/proxy"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
