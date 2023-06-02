@@ -29,7 +29,10 @@ func GetJSONReq[T proto.Message](c *fiber.Ctx, req T, useMeta bool) error {
 		values[string(key)] = string(value)
 	})
 	if len(c.Body()) != 0 {
-		c.BodyParser(&values)
+		err := c.BodyParser(&values)
+		if err != nil {
+			return err
+		}
 	}
 	if useMeta {
 		meta := make(map[string]any)

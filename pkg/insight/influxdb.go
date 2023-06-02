@@ -19,9 +19,9 @@ func NewInfluxDbLogger(dsn string, authToken string, org string, bucket string, 
 	writeAPI := client.WriteAPI(org, bucket)
 	writeAPI.SetWriteFailedCallback(func(batch string, error http2.Error, retryAttempts uint) bool {
 		if failover != nil {
-			failover.Write([]byte(batch))
-			failover.Write([]byte(error.Error()))
-			failover.Write([]byte("\r\n"))
+			_, _ = failover.Write([]byte(batch))
+			_, _ = failover.Write([]byte(error.Error()))
+			_, _ = failover.Write([]byte("\r\n"))
 		}
 		return false
 	})

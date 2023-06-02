@@ -83,7 +83,7 @@ func compress(in []byte) ([]byte, error) {
 	}
 	_, err = io.Copy(enc, bytes.NewBuffer(in))
 	if err != nil {
-		enc.Close()
+		_ = enc.Close()
 		return nil, err
 	}
 	err = enc.Close()

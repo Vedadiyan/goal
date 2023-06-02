@@ -65,7 +65,7 @@ func send(httpClient *httpClient, ctx context.Context, httpRequest IHttpReuqest)
 		return nil, err
 	}
 	defer func() {
-		request.Body.Close()
+		_ = request.Body.Close()
 	}()
 	if httpRequest.Headers() != nil {
 		httpRequest.Headers().Copy(&request.Header)

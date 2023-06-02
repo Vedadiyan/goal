@@ -36,7 +36,7 @@ func AddWithTTL(key string, value any, ttl time.Duration) error {
 		return err
 	}
 	time.AfterFunc(ttl, func() {
-		Delete(key)
+		_ = Delete(key)
 	})
 	raise(ADD, key, value)
 	return nil
@@ -60,7 +60,7 @@ func Set(key string, value any) error {
 func SetWithTTL(key string, value any, ttl time.Duration) error {
 	_store.Store(key, value)
 	time.AfterFunc(ttl, func() {
-		Delete(key)
+		_ = Delete(key)
 	})
 	raise(SET, key, value)
 	return nil

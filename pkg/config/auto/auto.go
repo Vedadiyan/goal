@@ -86,7 +86,7 @@ func Bootstrap(url string) error {
 							if err != nil {
 								return
 							}
-							t.Init(value)
+							_ = t.Init(value)
 						})
 					}
 				}
@@ -111,7 +111,7 @@ func Bootstrap(url string) error {
 							if err != nil {
 								return
 							}
-							t.Init(value)
+							_ = t.Init(value)
 						})
 					}
 				}

@@ -48,7 +48,8 @@ func Bootstrapper() {
 	if !_skipInterrupt {
 		runtime.WaitForInterrupt(func() {
 			for _, service := range services {
-				service.Shutdown()
+				_ = service.Shutdown()
+
 			}
 		})
 	}

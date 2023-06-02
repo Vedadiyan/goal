@@ -55,7 +55,7 @@ func UseInfluxDb(dsn string, authToken string, org string, bucket string) {
 }
 
 func UseInfluxDbWithFailover(dsn string, authToken string, org string, bucket string, logFilePath string) error {
-	file, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_APPEND, os.ModePerm)
+	file, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_APPEND, os.ModePerm) // #nosec G304
 	if err != nil {
 		return err
 	}

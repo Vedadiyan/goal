@@ -114,16 +114,22 @@ func (t NATSService[TReq, TRes, TFuncType]) handler(msg *nats.Msg) {
 	insight := insight.New(t.namespace, msg.Reply)
 	insight.OnFailure(func() {
 		headers.Add("status", "FAIL:RECOVERED")
-		msg.RespondMsg(outMsg)
+		err := msg.RespondMsg(outMsg)
+		if err != nil {
+			insight.Error(err)
+		}
 	})
 	defer insight.Close()
 	request := t.newReq()
 	if t.options.isCached {
 		_requestHash, err := GetHash(msg.Data)
 		if err != nil {
-			headers.Add("status", "FAIL:REQUEST:HASH")
-			msg.RespondMsg(outMsg)
 			insight.Error(err)
+			headers.Add("status", "FAIL:REQUEST:HASH")
+			err := msg.RespondMsg(outMsg)
+			if err != nil {
+				insight.Error(err)
+			}
 			return
 		}
 		requestHash = _requestHash
@@ -131,7 +137,7 @@ func (t NATSService[TReq, TRes, TFuncType]) handler(msg *nats.Msg) {
 		if err == nil {
 			headers.Add("status", "SUCCESS")
 			outMsg.Data = value.Value()
-			msg.RespondMsg(outMsg)
+			err := msg.RespondMsg(outMsg)
 			if err != nil {
 				insight.Error(err)
 				return
@@ -142,26 +148,35 @@ func (t NATSService[TReq, TRes, TFuncType]) handler(msg *nats.Msg) {
 	if len(msg.Data) > 0 {
 		err := t.codec.Decode(msg.Subject, msg.Data, request)
 		if err != nil {
-			headers.Add("status", "FAIL:DECODE")
-			msg.RespondMsg(outMsg)
 			insight.Error(err)
+			headers.Add("status", "FAIL:DECODE")
+			err := msg.RespondMsg(outMsg)
+			if err != nil {
+				insight.Error(err)
+			}
 			return
 		}
 	}
 	insight.Start(request)
 	response, err := t.handlerFn(request)
 	if err != nil {
+		insight.Error(err)
 		headers.Add("status", "FAIL:HANDLE")
 		msg.Data = []byte(err.Error())
-		msg.RespondMsg(outMsg)
-		insight.Error(err)
+		err := msg.RespondMsg(outMsg)
+		if err != nil {
+			insight.Error(err)
+		}
 		return
 	}
 	bytes, err := t.codec.Encode(msg.Subject, response)
 	if err != nil {
-		headers.Add("status", "FAIL:ENCODE")
-		msg.RespondMsg(outMsg)
 		insight.Error(err)
+		headers.Add("status", "FAIL:ENCODE")
+		err := msg.RespondMsg(outMsg)
+		if err != nil {
+			insight.Error(err)
+		}
 		return
 	}
 	if t.options.isCached {
@@ -172,7 +187,7 @@ func (t NATSService[TReq, TRes, TFuncType]) handler(msg *nats.Msg) {
 	}
 	headers.Add("status", "SUCCESS")
 	outMsg.Data = bytes
-	msg.RespondMsg(outMsg)
+	err = msg.RespondMsg(outMsg)
 	if err != nil {
 		insight.Error(err)
 		return
