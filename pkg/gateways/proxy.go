@@ -7,10 +7,18 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/vedadiyan/goal/pkg/protoutil"
+	protoval "github.com/vedadiyan/goal/pkg/protovalidate"
 	"github.com/vedadiyan/goal/pkg/proxy"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 )
+
+type Gateway struct {
+	useMeta         bool
+	validationField *string
+}
+
+type GatewayOption func(gateway *Gateway)
 
 func GetJSONReq[T proto.Message](c *fiber.Ctx, req T, useMeta bool) error {
 	values := make(map[string]any)
@@ -39,15 +47,30 @@ func GetJSONReq[T proto.Message](c *fiber.Ctx, req T, useMeta bool) error {
 	return nil
 }
 
-func Single[TRequest any, TResponse any](app *fiber.App, uri string, method string, to string, useMeta bool) *proxy.NATSProxy[proto.Message] {
+func Single[TRequest any, TResponse any](app *fiber.App, uri string, method string, to string, options ...GatewayOption) *proxy.NATSProxy[proto.Message] {
 	proxy := proxy.Create[TResponse]("$etcd:/nats", to)
+	var gateway Gateway
+	for _, option := range options {
+		option(&gateway)
+	}
 	app.Add(method, uri, func(c *fiber.Ctx) error {
 		var inst TRequest
 		req := any(&inst).(proto.Message)
-		err := GetJSONReq(c, req, useMeta)
+		err := GetJSONReq(c, req, gateway.useMeta)
 		if err != nil {
 			c.Status(fiber.StatusBadRequest)
 			return err
+		}
+		if gateway.validationField != nil {
+			vc := protoval.New(*gateway.validationField, req)
+			err := vc.Validate()
+			if err != nil {
+				return err
+			}
+			if !vc.IsValid() {
+				c.Status(400)
+				return c.JSON(vc.Errors())
+			}
 		}
 		res, err := proxy.Send(req)
 		if err != nil {
@@ -62,21 +85,36 @@ func Single[TRequest any, TResponse any](app *fiber.App, uri string, method stri
 	return proxy
 }
 
-func Aggregated[TRequest any, TResponse any](app *fiber.App, uri string, method string, to map[string]string, useMata bool) map[string]*proxy.NATSProxy[proto.Message] {
+func Aggregated[TRequest any, TResponse any](app *fiber.App, uri string, method string, to map[string]string, options ...GatewayOption) map[string]*proxy.NATSProxy[proto.Message] {
 	proxies := make(map[string]*proxy.NATSProxy[proto.Message])
 	for key, gateway := range to {
 		correctedURI := strings.TrimSuffix(uri, "/")
-		proxies[key] = Single[TRequest, TResponse](app, fmt.Sprintf("%s/%s", correctedURI, key), method, gateway, useMata)
+		proxies[key] = Single[TRequest, TResponse](app, fmt.Sprintf("%s/%s", correctedURI, key), method, gateway, options...)
+	}
+	var gateway Gateway
+	for _, option := range options {
+		option(&gateway)
 	}
 	app.Add(method, uri, func(c *fiber.Ctx) error {
+		out := make(map[string]map[string]any)
 		var inst TRequest
 		req := any(&inst).(proto.Message)
-		err := GetJSONReq(c, req, useMata)
+		err := GetJSONReq(c, req, gateway.useMeta)
 		if err != nil {
 			c.Status(fiber.StatusBadRequest)
 			return err
 		}
-		out := make(map[string]map[string]any)
+		if gateway.validationField != nil {
+			vc := protoval.New(*gateway.validationField, req)
+			err := vc.Validate()
+			if err != nil {
+				return err
+			}
+			if !vc.IsValid() {
+				c.Status(400)
+				return c.JSON(vc.Errors())
+			}
+		}
 		for key, proxy := range proxies {
 			res, err := proxy.Send(req)
 			if err != nil {
@@ -99,17 +137,29 @@ func Aggregated[TRequest any, TResponse any](app *fiber.App, uri string, method 
 	return proxies
 }
 
-func Forward[TRequest any, TResponse any](uri string, method string, to any, useMeta bool) {
+func Forward[TRequest any, TResponse any](uri string, method string, to any, options ...GatewayOption) {
 	_gateways = append(_gateways, func(app *fiber.App) {
 		switch t := to.(type) {
 		case string:
 			{
-				Single[TRequest, TResponse](app, uri, method, t, useMeta)
+				Single[TRequest, TResponse](app, uri, method, t, options...)
 			}
 		case map[string]string:
 			{
-				Aggregated[TRequest, TResponse](app, uri, method, t, useMeta)
+				Aggregated[TRequest, TResponse](app, uri, method, t, options...)
 			}
 		}
 	})
+}
+
+func UseMeta() GatewayOption {
+	return func(gateway *Gateway) {
+		gateway.useMeta = true
+	}
+}
+
+func UseValidation(validationField string) GatewayOption {
+	return func(gateway *Gateway) {
+		gateway.validationField = &validationField
+	}
 }
