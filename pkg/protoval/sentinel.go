@@ -1,22 +1,22 @@
 package protoval
 
 type ValidationError struct {
-	fieldName string
-	message   string
+	FieldName string
+	Message   string
 }
 
-func (validationError ValidationError) FieldName() string {
-	return validationError.fieldName
+func (validationError ValidationError) GetFieldName() string {
+	return validationError.FieldName
 }
 
 func (validationError ValidationError) Error() string {
-	return validationError.message
+	return validationError.Message
 }
 
 func Error(fieldName string, message string) *ValidationError {
 	validationError := ValidationError{
-		fieldName: fieldName,
-		message:   message,
+		FieldName: fieldName,
+		Message:   message,
 	}
 	return &validationError
 }

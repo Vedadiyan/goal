@@ -72,7 +72,11 @@ func Single[TRequest any, TResponse any](app *fiber.App, uri string, method stri
 			}
 			if !vc.IsValid() {
 				c.Status(400)
-				return c.JSON(vc.Errors())
+				data := vc.Errors()
+				return c.JSON(map[string]any{
+					"request": req,
+					"errors":  data,
+				})
 			}
 		}
 		res, err := proxy.Send(req)
