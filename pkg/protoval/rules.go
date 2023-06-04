@@ -128,7 +128,7 @@ func Min(name string, value any, rule string) error {
 	if err != nil {
 		return err
 	}
-	if val > i {
+	if val < i {
 		return Error(name, fmt.Sprintf("must be greater than or equal to %f", i))
 	}
 	return nil
@@ -143,7 +143,7 @@ func Max(name string, value any, rule string) error {
 	if err != nil {
 		return err
 	}
-	if val < i {
+	if val > i {
 		return Error(name, fmt.Sprintf("must be less than or equal to %f", i))
 	}
 	return nil
