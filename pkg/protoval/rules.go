@@ -20,7 +20,7 @@ func init() {
 	_rules["longitude"] = Longitude
 	_rules["email"] = Email
 	_rules["future_date"] = FutureDate
-	_rules["mix"] = Min
+	_rules["min"] = Min
 	_rules["max"] = Max
 	_rules["regex"] = Regex
 }
