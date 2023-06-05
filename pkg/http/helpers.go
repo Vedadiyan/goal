@@ -32,7 +32,7 @@ func SendWithContext[T string | JSON | XML | URLEncoded | []byte](ctx context.Co
 	}
 	response, err := GetHttpClient().Send(ctx, &rq)
 	if err != nil {
-		return nil, err
+		return response, err
 	}
 	return response, nil
 }

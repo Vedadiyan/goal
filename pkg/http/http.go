@@ -75,7 +75,7 @@ func send(httpClient *httpClient, ctx context.Context, httpRequest IHttpReuqest)
 		return nil, err
 	}
 	if response.StatusCode > 399 && response.StatusCode <= 599 {
-		return nil, fmt.Errorf(response.Status)
+		return &httpResponse{response: *response}, fmt.Errorf(response.Status)
 	}
 	return &httpResponse{response: *response}, nil
 }
