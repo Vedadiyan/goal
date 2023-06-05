@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"sync"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/vedadiyan/goal/pkg/protoutil"
@@ -11,6 +12,7 @@ import (
 	"github.com/vedadiyan/goal/pkg/proxy"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
 type Gateway struct {
@@ -122,23 +124,34 @@ func Aggregated[TRequest any, TResponse any](app *fiber.App, uri string, method 
 				return c.JSON(vc.Errors())
 			}
 		}
-		for key, proxy := range proxies {
-			res, err := proxy.Send(req)
-			if err != nil {
-				out[key] = map[string]any{
-					"error": err.Error(),
+		var wg sync.WaitGroup
+		var mut sync.Mutex
+		for key, proxy_ := range proxies {
+			wg.Add(1)
+			go func(key string, proxy *proxy.NATSProxy[protoreflect.ProtoMessage]) {
+				defer mut.Unlock()
+				defer wg.Done()
+				res, err := proxy.Send(req)
+				if err != nil {
+					mut.Lock()
+					out[key] = map[string]any{
+						"error": err.Error(),
+					}
+					return
 				}
-				continue
-			}
-			mapper, err := protoutil.Marshal(any(*res).(proto.Message))
-			if err != nil {
-				out[key] = map[string]any{
-					"error": err.Error(),
+				mapper, err := protoutil.Marshal(any(*res).(proto.Message))
+				if err != nil {
+					mut.Lock()
+					out[key] = map[string]any{
+						"error": err.Error(),
+					}
+					return
 				}
-				continue
-			}
-			out[key] = mapper
+				mut.Lock()
+				out[key] = mapper
+			}(key, proxy_)
 		}
+		wg.Wait()
 		return c.JSON(out)
 	})
 	return proxies
