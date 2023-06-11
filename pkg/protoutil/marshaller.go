@@ -15,7 +15,32 @@ func Marshal(message proto.Message) (map[string]any, error) {
 }
 func marshallerSetValue(data any, name string, index int, len int, v map[string]any) {
 	if index < 0 {
-		v[name] = data
+		switch t := data.(type) {
+		case int32:
+			{
+				v[name] = float64(t)
+			}
+		case int:
+			{
+				v[name] = float64(t)
+			}
+		case int16:
+			{
+				v[name] = float64(t)
+			}
+		case int64:
+			{
+				v[name] = float64(t)
+			}
+		case int8:
+			{
+				v[name] = float64(t)
+			}
+		default:
+			{
+				v[name] = data
+			}
+		}
 		return
 	}
 	_, ok := v[name]
