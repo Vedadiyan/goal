@@ -1,6 +1,7 @@
 package cache
 
 import (
+	"runtime"
 	"sync"
 	"time"
 )
@@ -59,8 +60,10 @@ func Set(key string, value any) error {
 
 func SetWithTTL(key string, value any, ttl time.Duration) error {
 	_store.Store(key, value)
-	time.AfterFunc(ttl, func() {
+	var timer *time.Timer
+	timer = time.AfterFunc(ttl, func() {
 		_ = Delete(key)
+		runtime.KeepAlive(timer)
 	})
 	raise(SET, key, value)
 	return nil
