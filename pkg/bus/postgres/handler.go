@@ -57,31 +57,33 @@ func (conn *Connection) init(ctx context.Context) error {
 }
 
 func (conn *Connection) Listen(ctx context.Context) {
-	conn.init(ctx)
-	for {
-		select {
-		case <-ctx.Done():
-			{
-				return
-			}
-		case notification := <-conn.next(ctx):
-			{
-				if notification.Err != nil {
+	go func() {
+		conn.init(ctx)
+		for {
+			select {
+			case <-ctx.Done():
+				{
 					return
 				}
-				check, err := conn.check(ctx, notification.Packet.Payload)
-				if err != nil {
-					return
-				}
-				if !check {
-					return
-				}
-				if handler, ok := conn.subscribers[notification.Packet.Channel]; ok {
-					handler(notification.Packet.Payload)
+			case notification := <-conn.next(ctx):
+				{
+					if notification.Err != nil {
+						return
+					}
+					check, err := conn.check(ctx, notification.Packet.Payload)
+					if err != nil {
+						return
+					}
+					if !check {
+						return
+					}
+					if handler, ok := conn.subscribers[notification.Packet.Channel]; ok {
+						handler(notification.Packet.Payload)
+					}
 				}
 			}
 		}
-	}
+	}()
 }
 
 func (conn *Connection) Subscribe(subject string, handler func(payload string)) {
