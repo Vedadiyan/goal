@@ -57,8 +57,8 @@ func (conn *Connection) init(ctx context.Context) error {
 }
 
 func (conn *Connection) Listen(ctx context.Context) {
+	conn.init(ctx)
 	go func() {
-		conn.init(ctx)
 		for {
 			select {
 			case <-ctx.Done():
