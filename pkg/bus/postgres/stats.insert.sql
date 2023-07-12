@@ -1,0 +1,1 @@
+INSERT INTO __pubsub.stats (id, timestamp) VALUES($1, CURRENT_TIMESTAMP) ON CONFLICT DO NOTHING
