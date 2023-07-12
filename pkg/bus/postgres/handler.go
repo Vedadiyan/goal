@@ -21,7 +21,7 @@ var (
 type Connection struct {
 	conn        *pgx.Conn
 	subscribers map[string]func(payload string)
-	rwMut       sync.RWMutex
+	mut         sync.Mutex
 }
 
 type Msg struct {
@@ -76,8 +76,6 @@ func (conn *Connection) Listen(ctx context.Context) {
 				if !check {
 					return
 				}
-				conn.rwMut.RLock()
-				defer conn.rwMut.RUnlock()
 				if handler, ok := conn.subscribers[notification.Packet.Channel]; ok {
 					handler(notification.Packet.Payload)
 				}
@@ -87,13 +85,13 @@ func (conn *Connection) Listen(ctx context.Context) {
 }
 
 func (conn *Connection) Subscribe(subject string, handler func(payload string)) {
-	conn.rwMut.Lock()
-	defer conn.rwMut.Unlock()
+	conn.mut.Lock()
+	defer conn.mut.Unlock()
 	conn.subscribers[subject] = handler
 }
 
 func (conn *Connection) Unsubscribe(subject string) {
-	conn.rwMut.Lock()
-	defer conn.rwMut.Unlock()
+	conn.mut.Lock()
+	defer conn.mut.Unlock()
 	delete(conn.subscribers, subject)
 }
