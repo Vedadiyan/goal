@@ -18,10 +18,12 @@ var (
 	_statsInsert string
 )
 
-type Connection struct {
+type Listener struct {
 	conn        *pgx.Conn
 	subscribers map[string]func(payload string)
 	mut         sync.Mutex
+	ctx         context.Context
+	cancelFunc  context.CancelFunc
 }
 
 type Msg struct {
@@ -29,9 +31,9 @@ type Msg struct {
 	Err    error
 }
 
-func (conn *Connection) next(ctx context.Context) chan *Msg {
+func (listener *Listener) next(ctx context.Context) chan *Msg {
 	chn := make(chan *Msg)
-	packet, err := conn.conn.WaitForNotification(ctx)
+	packet, err := listener.conn.WaitForNotification(ctx)
 	msg := &Msg{
 		Packet: packet,
 		Err:    err,
@@ -40,24 +42,28 @@ func (conn *Connection) next(ctx context.Context) chan *Msg {
 	return chn
 }
 
-func (conn *Connection) tryLockWithAutoRelease(ctx context.Context, message string) (bool, error) {
+func (listener *Listener) tryEnter(ctx context.Context, message string) (bool, error) {
 	sha256 := sha256.New()
 	_, err := sha256.Write([]byte(message))
 	if err != nil {
 		return false, err
 	}
 	bytes := sha256.Sum(nil)
-	res, err := conn.conn.Exec(ctx, _statsInsert, hex.EncodeToString(bytes))
+	res, err := listener.conn.Exec(ctx, _statsInsert, hex.EncodeToString(bytes))
 	return res.RowsAffected() > 0, err
 }
 
-func (conn *Connection) init(ctx context.Context) error {
-	_, err := conn.conn.Exec(ctx, _statsTable)
+func (listener *Listener) init(ctx context.Context) error {
+	_, err := listener.conn.Exec(ctx, _statsTable)
 	return err
 }
 
-func (conn *Connection) listen(ctx context.Context) {
-	conn.init(ctx)
+func (listener *Listener) listen(ctx context.Context) error {
+	listener.init(ctx)
+	_, err := listener.conn.Exec(ctx, "LISTEN *")
+	if err != nil {
+		return err
+	}
 	go func() {
 		for {
 			select {
@@ -65,48 +71,60 @@ func (conn *Connection) listen(ctx context.Context) {
 				{
 					return
 				}
-			case notification := <-conn.next(ctx):
+			case notification := <-listener.next(ctx):
 				{
 					if notification.Err != nil {
 						return
 					}
-					check, err := conn.tryLockWithAutoRelease(ctx, notification.Packet.Payload)
+					check, err := listener.tryEnter(ctx, notification.Packet.Payload)
 					if err != nil {
 						return
 					}
 					if !check {
 						return
 					}
-					if handler, ok := conn.subscribers[notification.Packet.Channel]; ok {
+					if handler, ok := listener.subscribers[notification.Packet.Channel]; ok {
 						handler(notification.Packet.Payload)
 					}
 				}
 			}
 		}
 	}()
+	return nil
 }
 
-func (conn *Connection) Subscribe(subject string, handler func(payload string)) {
-	conn.mut.Lock()
-	defer conn.mut.Unlock()
-	conn.subscribers[subject] = handler
+func (listener *Listener) Subscribe(subject string, handler func(payload string)) {
+	listener.mut.Lock()
+	defer listener.mut.Unlock()
+	listener.subscribers[subject] = handler
 }
 
-func (conn *Connection) Unsubscribe(subject string) {
-	conn.mut.Lock()
-	defer conn.mut.Unlock()
-	delete(conn.subscribers, subject)
+func (listener *Listener) Unsubscribe(subject string) {
+	listener.mut.Lock()
+	defer listener.mut.Unlock()
+	delete(listener.subscribers, subject)
 }
 
-func Connect(ctx context.Context, dsn string) (*Connection, error) {
+func (listerner *Listener) Drain() {
+	listerner.cancelFunc()
+}
+
+func Connect(dsn string) (*Listener, error) {
+	ctx, cancelFunc := context.WithCancel(context.Background())
 	conn, err := pgx.Connect(ctx, dsn)
+	if err != nil {
+		cancelFunc()
+		return nil, err
+	}
+	cn := &Listener{
+		conn:        conn,
+		subscribers: make(map[string]func(payload string)),
+		ctx:         ctx,
+		cancelFunc:  cancelFunc,
+	}
+	err = cn.listen(ctx)
 	if err != nil {
 		return nil, err
 	}
-	cn := &Connection{
-		conn:        conn,
-		subscribers: make(map[string]func(payload string)),
-	}
-	cn.listen(ctx)
-	return cn, err
+	return cn, nil
 }

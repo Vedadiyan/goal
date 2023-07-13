@@ -1,1 +1,0 @@
-DELETE FROM __pubsub.stats WHERE id = $1
