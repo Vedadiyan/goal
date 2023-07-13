@@ -84,7 +84,7 @@ func (listener *Listener) listen(ctx context.Context) error {
 						return
 					}
 					if handler, ok := listener.subscribers[notification.Packet.Channel]; ok {
-						handler(notification.Packet.Payload)
+						go handler(notification.Packet.Payload)
 					}
 				}
 			}
