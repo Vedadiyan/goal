@@ -37,9 +37,26 @@ func (pool *Pool) BeginTx(ctx context.Context, txOptions pgx.TxOptions) (pgx.Tx,
 	return pool.pool.BeginTx(ctx, txOptions)
 }
 
-func (pool *Pool) Query(ctx context.Context, sql string, arguments map[string]any) (pgx.Rows, error) {
+func (pool *Pool) Query(ctx context.Context, sql string, arguments map[string]any) ([]map[string]any, error) {
 	_sql, _arguments := getPgxSql(sql, arguments)
-	return pool.pool.Query(ctx, _sql, _arguments...)
+	res, err := pool.pool.Query(ctx, _sql, _arguments...)
+	if err != nil {
+		return nil, err
+	}
+	rows := make([]map[string]any, 0)
+	for res.Next() {
+		fields := res.FieldDescriptions()
+		value, err := res.Values()
+		if err != nil {
+			return nil, err
+		}
+		row := make(map[string]any)
+		for i := 0; i < len(fields); i++ {
+			row[fields[i].Name] = value[i]
+		}
+		rows = append(rows, row)
+	}
+	return rows, nil
 }
 
 func (pool *Pool) Close() {
