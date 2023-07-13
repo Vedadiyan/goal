@@ -8,6 +8,14 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/vedadiyan/goal/pkg/di"
+)
+
+type Type int
+
+const (
+	COMMAND Type = iota
+	QUERY
 )
 
 type Pool struct {
@@ -83,4 +91,31 @@ func New(dsn string, maxConn int, minConn int) (*Pool, error) {
 		cancelFunc: cancelFunc,
 	}
 	return pool, nil
+}
+
+func Handle(dsn string, _type Type, sql string, arguments map[string]any) ([]map[string]any, error) {
+	pool := *di.ResolveWithNameOrPanic[*Pool](dsn, nil)
+	switch _type {
+	case COMMAND:
+		{
+			res, err := pool.Exec(context.TODO(), sql, arguments)
+			if err != nil {
+				return nil, err
+			}
+			return []map[string]any{
+				{
+					"rows_affected": res.RowsAffected(),
+				},
+			}, nil
+		}
+	case QUERY:
+		{
+			res, err := pool.Query(context.TODO(), sql, arguments)
+			if err != nil {
+				return nil, err
+			}
+			return res, nil
+		}
+	}
+	return nil, fmt.Errorf("unsupported operation")
 }
