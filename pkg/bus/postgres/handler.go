@@ -40,7 +40,7 @@ func (conn *Connection) next(ctx context.Context) chan *Msg {
 	return chn
 }
 
-func (conn *Connection) check(ctx context.Context, message string) (bool, error) {
+func (conn *Connection) tryLockWithAutoRelease(ctx context.Context, message string) (bool, error) {
 	sha256 := sha256.New()
 	_, err := sha256.Write([]byte(message))
 	if err != nil {
@@ -56,7 +56,7 @@ func (conn *Connection) init(ctx context.Context) error {
 	return err
 }
 
-func (conn *Connection) Listen(ctx context.Context) {
+func (conn *Connection) listen(ctx context.Context) {
 	conn.init(ctx)
 	go func() {
 		for {
@@ -70,7 +70,7 @@ func (conn *Connection) Listen(ctx context.Context) {
 					if notification.Err != nil {
 						return
 					}
-					check, err := conn.check(ctx, notification.Packet.Payload)
+					check, err := conn.tryLockWithAutoRelease(ctx, notification.Packet.Payload)
 					if err != nil {
 						return
 					}
@@ -96,4 +96,17 @@ func (conn *Connection) Unsubscribe(subject string) {
 	conn.mut.Lock()
 	defer conn.mut.Unlock()
 	delete(conn.subscribers, subject)
+}
+
+func Connect(ctx context.Context, dsn string) (*Connection, error) {
+	conn, err := pgx.Connect(ctx, dsn)
+	if err != nil {
+		return nil, err
+	}
+	cn := &Connection{
+		conn:        conn,
+		subscribers: make(map[string]func(payload string)),
+	}
+	cn.listen(ctx)
+	return cn, err
 }
