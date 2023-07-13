@@ -32,7 +32,7 @@ type Msg struct {
 }
 
 func (listener *Listener) next(ctx context.Context) chan *Msg {
-	chn := make(chan *Msg)
+	chn := make(chan *Msg, 1)
 	packet, err := listener.conn.WaitForNotification(ctx)
 	msg := &Msg{
 		Packet: packet,
@@ -60,10 +60,11 @@ func (listener *Listener) init(ctx context.Context) error {
 
 func (listener *Listener) listen(ctx context.Context) error {
 	listener.init(ctx)
-	_, err := listener.conn.Exec(ctx, "LISTEN *")
+	_, err := listener.conn.Exec(ctx, "LISTEN Test")
 	if err != nil {
 		return err
 	}
+
 	go func() {
 		for {
 			select {
@@ -81,7 +82,7 @@ func (listener *Listener) listen(ctx context.Context) error {
 						return
 					}
 					if !check {
-						return
+						continue
 					}
 					if handler, ok := listener.subscribers[notification.Packet.Channel]; ok {
 						go handler(notification.Packet.Payload)
