@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	_ "embed"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"sync"
 
@@ -33,6 +34,11 @@ type Msg struct {
 	Err    error
 }
 
+type MsgFrame struct {
+	Subject string
+	Data    string
+}
+
 func (listener *Listener) next(ctx context.Context) chan *Msg {
 	chn := make(chan *Msg, 1)
 	packet, err := listener.conn.WaitForNotification(ctx)
@@ -44,9 +50,9 @@ func (listener *Listener) next(ctx context.Context) chan *Msg {
 	return chn
 }
 
-func (listener *Listener) tryEnter(ctx context.Context, message string) (bool, error) {
+func (listener *Listener) tryEnter(ctx context.Context, pid uint32, message string) (bool, error) {
 	sha256 := sha256.New()
-	_, err := sha256.Write([]byte(message))
+	_, err := sha256.Write([]byte(fmt.Sprintf("%d-%s", pid, message)))
 	if err != nil {
 		return false, err
 	}
@@ -76,11 +82,11 @@ func (listener *Listener) listen(ctx context.Context) error {
 			case notification := <-listener.next(ctx):
 				{
 					if notification.Err != nil {
-						return
+						continue
 					}
-					check, err := listener.tryEnter(ctx, notification.Packet.Payload)
+					check, err := listener.tryEnter(ctx, notification.Packet.PID, notification.Packet.Payload)
 					if err != nil {
-						return
+						continue
 					}
 					if !check {
 						continue
@@ -88,8 +94,13 @@ func (listener *Listener) listen(ctx context.Context) error {
 					if handler, ok := listener.subscribers["*"]; ok {
 						go handler(notification.Packet.Payload)
 					}
-					if handler, ok := listener.subscribers[notification.Packet.Channel]; ok {
-						go handler(notification.Packet.Payload)
+					var msgFrame MsgFrame
+					err = json.Unmarshal([]byte(notification.Packet.Payload), &msgFrame)
+					if err != nil {
+						continue
+					}
+					if handler, ok := listener.subscribers[msgFrame.Subject]; ok {
+						go handler(msgFrame.Data)
 					}
 				}
 			}
