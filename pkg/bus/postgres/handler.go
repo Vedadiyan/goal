@@ -66,7 +66,6 @@ func (listener *Listener) listen(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-
 	go func() {
 		for {
 			select {
