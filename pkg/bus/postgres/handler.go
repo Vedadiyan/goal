@@ -23,7 +23,7 @@ var (
 type Listener struct {
 	conn        *pgx.Conn
 	channel     string
-	subscribers map[string]func(payload string)
+	subscribers map[string]func(payload map[string]any)
 	mut         sync.Mutex
 	ctx         context.Context
 	cancelFunc  context.CancelFunc
@@ -36,7 +36,7 @@ type Msg struct {
 
 type MsgFrame struct {
 	Subject string
-	Data    string
+	Data    map[string]any
 }
 
 func (listener *Listener) next(ctx context.Context) chan *Msg {
@@ -50,9 +50,9 @@ func (listener *Listener) next(ctx context.Context) chan *Msg {
 	return chn
 }
 
-func (listener *Listener) tryEnter(ctx context.Context, pid uint32, message string) (bool, error) {
+func (listener *Listener) tryEnter(ctx context.Context, message string) (bool, error) {
 	sha256 := sha256.New()
-	_, err := sha256.Write([]byte(fmt.Sprintf("%d-%s", pid, message)))
+	_, err := sha256.Write([]byte(message))
 	if err != nil {
 		return false, err
 	}
@@ -68,7 +68,8 @@ func (listener *Listener) init(ctx context.Context) error {
 
 func (listener *Listener) listen(ctx context.Context) error {
 	listener.init(ctx)
-	_, err := listener.conn.Exec(ctx, fmt.Sprintf("LISTEN %s", listener.channel))
+	cmd := fmt.Sprintf("LISTEN %s;", listener.channel)
+	_, err := listener.conn.Exec(ctx, cmd)
 	if err != nil {
 		return err
 	}
@@ -84,20 +85,20 @@ func (listener *Listener) listen(ctx context.Context) error {
 					if notification.Err != nil {
 						continue
 					}
-					check, err := listener.tryEnter(ctx, notification.Packet.PID, notification.Packet.Payload)
+					check, err := listener.tryEnter(ctx, notification.Packet.Payload)
 					if err != nil {
 						continue
 					}
 					if !check {
 						continue
 					}
-					if handler, ok := listener.subscribers["*"]; ok {
-						go handler(notification.Packet.Payload)
-					}
 					var msgFrame MsgFrame
 					err = json.Unmarshal([]byte(notification.Packet.Payload), &msgFrame)
 					if err != nil {
 						continue
+					}
+					if handler, ok := listener.subscribers["*"]; ok {
+						go handler(map[string]any{"msg": msgFrame})
 					}
 					if handler, ok := listener.subscribers[msgFrame.Subject]; ok {
 						go handler(msgFrame.Data)
@@ -109,7 +110,7 @@ func (listener *Listener) listen(ctx context.Context) error {
 	return nil
 }
 
-func (listener *Listener) Subscribe(subject string, handler func(payload string)) {
+func (listener *Listener) Subscribe(subject string, handler func(payload map[string]any)) {
 	listener.mut.Lock()
 	defer listener.mut.Unlock()
 	listener.subscribers[subject] = handler
@@ -135,7 +136,7 @@ func Connect(dsn string, channel string) (*Listener, error) {
 	cn := &Listener{
 		conn:        conn,
 		channel:     channel,
-		subscribers: make(map[string]func(payload string)),
+		subscribers: make(map[string]func(payload map[string]any)),
 		ctx:         ctx,
 		cancelFunc:  cancelFunc,
 	}
