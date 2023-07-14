@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	_ "embed"
 	"encoding/hex"
+	"fmt"
 	"sync"
 
 	"github.com/jackc/pgx/v5"
@@ -20,6 +21,7 @@ var (
 
 type Listener struct {
 	conn        *pgx.Conn
+	channel     string
 	subscribers map[string]func(payload string)
 	mut         sync.Mutex
 	ctx         context.Context
@@ -60,7 +62,7 @@ func (listener *Listener) init(ctx context.Context) error {
 
 func (listener *Listener) listen(ctx context.Context) error {
 	listener.init(ctx)
-	_, err := listener.conn.Exec(ctx, "LISTEN Test")
+	_, err := listener.conn.Exec(ctx, fmt.Sprintf("LISTEN %s", listener.channel))
 	if err != nil {
 		return err
 	}
@@ -110,7 +112,7 @@ func (listerner *Listener) Drain() {
 	listerner.cancelFunc()
 }
 
-func Connect(dsn string) (*Listener, error) {
+func Connect(dsn string, channel string) (*Listener, error) {
 	ctx, cancelFunc := context.WithCancel(context.Background())
 	conn, err := pgx.Connect(ctx, dsn)
 	if err != nil {
@@ -119,6 +121,7 @@ func Connect(dsn string) (*Listener, error) {
 	}
 	cn := &Listener{
 		conn:        conn,
+		channel:     channel,
 		subscribers: make(map[string]func(payload string)),
 		ctx:         ctx,
 		cancelFunc:  cancelFunc,
