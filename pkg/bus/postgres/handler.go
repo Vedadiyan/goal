@@ -85,6 +85,9 @@ func (listener *Listener) listen(ctx context.Context) error {
 					if !check {
 						continue
 					}
+					if handler, ok := listener.subscribers["*"]; ok {
+						go handler(notification.Packet.Payload)
+					}
 					if handler, ok := listener.subscribers[notification.Packet.Channel]; ok {
 						go handler(notification.Packet.Payload)
 					}
