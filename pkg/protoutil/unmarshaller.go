@@ -3,9 +3,31 @@ package protoutil
 import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 func Unmarshal(data any, message proto.Message) error {
+	if structPb, ok := message.(*structpb.Struct); ok {
+		switch t := data.(type) {
+		case map[string]any:
+			{
+				res, err := structpb.NewStruct(t)
+				if err != nil {
+					return err
+				}
+				*structPb = *res
+			}
+		default:
+			{
+				res, err := structpb.NewStruct(map[string]any{"data": t})
+				if err != nil {
+					return err
+				}
+				*structPb = *res
+			}
+		}
+		return nil
+	}
 	return unmarshallerNext(data, nil, -1, message)
 }
 func unmarshallerSet(data any, fd protoreflect.FieldDescriptor, message proto.Message) {
