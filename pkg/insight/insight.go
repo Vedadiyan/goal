@@ -28,7 +28,7 @@ type IExecutionContext interface {
 	Info(data any)
 	Error(err error)
 	Close()
-	OnFailure(fn func())
+	OnFailure(fn func(err error))
 }
 
 type ExecutionContext struct {
@@ -37,7 +37,7 @@ type ExecutionContext struct {
 	start  time.Time
 	end    time.Time
 	logger Logger
-	fn     func()
+	fn     func(err error)
 }
 
 func init() {
@@ -132,7 +132,7 @@ func (e *ExecutionContext) Close() {
 	e.end = time.Now()
 	if recovered := recover(); recovered != nil {
 		if e.fn != nil {
-			e.fn()
+			e.fn(recovered.(error))
 		}
 		info := make(map[string]any)
 		info["status"] = "Recovered"
@@ -152,7 +152,7 @@ func (e *ExecutionContext) Close() {
 	}
 }
 
-func (e *ExecutionContext) OnFailure(fn func()) {
+func (e *ExecutionContext) OnFailure(fn func(err error)) {
 	e.fn = fn
 }
 

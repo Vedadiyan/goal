@@ -112,10 +112,11 @@ func (t NATSService[TReq, TRes, TFuncType]) handler(msg *nats.Msg) {
 	headers := nats.Header{}
 	outMsg := &nats.Msg{Subject: msg.Reply, Header: headers}
 	insight := insight.New(t.namespace, msg.Reply)
-	insight.OnFailure(func() {
+	insight.OnFailure(func(err error) {
 		headers.Add("status", "FAIL:RECOVERED")
-		err := msg.RespondMsg(outMsg)
-		if err != nil {
+		outMsg.Data = []byte(err.Error())
+		_err := msg.RespondMsg(outMsg)
+		if _err != nil {
 			insight.Error(err)
 		}
 	})
@@ -162,7 +163,7 @@ func (t NATSService[TReq, TRes, TFuncType]) handler(msg *nats.Msg) {
 	if err != nil {
 		insight.Error(err)
 		headers.Add("status", "FAIL:HANDLE")
-		msg.Data = []byte(err.Error())
+		outMsg.Data = []byte(err.Error())
 		err := msg.RespondMsg(outMsg)
 		if err != nil {
 			insight.Error(err)
