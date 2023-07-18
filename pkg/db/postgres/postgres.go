@@ -40,7 +40,9 @@ func getPgxSql(sql string, arguments map[string]any) (string, []any) {
 func (pool *Pool) Exec(ctx context.Context, sql string, arguments map[string]any) (pgconn.CommandTag, error) {
 	_sql, _arguments := getPgxSql(sql, arguments)
 	str, err := sanitize.SanitizeSQL(_sql, _arguments...)
-	_ = err
+	if err != nil {
+		return pgconn.CommandTag{}, err
+	}
 	return pool.pool.Exec(ctx, str)
 }
 
