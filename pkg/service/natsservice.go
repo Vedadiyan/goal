@@ -17,8 +17,10 @@ import (
 type Option func(*NATSServiceOptions)
 
 type NATSServiceOptions struct {
-	isCached bool
-	ttl      time.Duration
+	isCached  bool
+	ttl       time.Duration
+	onsuccess []string
+	onerror   []string
 }
 
 type NATSService[TReq proto.Message, TRes proto.Message, TFuncType ~func(TReq) (TRes, error)] struct {
@@ -107,29 +109,62 @@ func (t NATSService[TReq, TRes, TFuncType]) Shutdown() error {
 func (t NATSService[TReq, TRes, TFuncType]) Reload() chan ReloadStates {
 	return t.reloadState
 }
+func (t NATSService[TReq, TRes, TFuncType]) error(insight insight.IExecutionContext, originalMsg *nats.Msg, responseMsg *nats.Msg) {
+	err := originalMsg.RespondMsg(responseMsg)
+	if err != nil {
+		insight.Error(err)
+	}
+	if t.options.onerror == nil {
+		return
+	}
+	onErrorResponse := *responseMsg
+	onErrorResponse.Data = originalMsg.Data
+	for _, namespace := range t.options.onerror {
+		msg := onErrorResponse
+		msg.Subject = namespace
+		err := t.conn.PublishMsg(&msg)
+		if err != nil {
+			insight.Error(err)
+		}
+	}
+}
+func (t NATSService[TReq, TRes, TFuncType]) success(insight insight.IExecutionContext, originalMsg *nats.Msg, responseMsg *nats.Msg) {
+	err := originalMsg.RespondMsg(responseMsg)
+	if err != nil {
+		insight.Error(err)
+	}
+	if t.options.onsuccess == nil {
+		return
+	}
+	onSuccessResponse := *responseMsg
+	onSuccessResponse.Data = originalMsg.Data
+	for _, namespace := range t.options.onsuccess {
+		msg := onSuccessResponse
+		msg.Subject = namespace
+		err := t.conn.PublishMsg(&msg)
+		if err != nil {
+			insight.Error(err)
+		}
+	}
+}
 func (t NATSService[TReq, TRes, TFuncType]) handler(msg *nats.Msg) {
 	var requestHash string
 	headers := nats.Header{}
 	outMsg := &nats.Msg{Subject: msg.Reply, Header: headers}
 	insight := insight.New(t.namespace, msg.Reply)
+	request := t.newReq()
 	insight.OnFailure(func() {
 		headers.Add("status", "FAIL:RECOVERED")
-		err := msg.RespondMsg(outMsg)
-		if err != nil {
-			insight.Error(err)
-		}
+		t.error(insight, msg, outMsg)
 	})
+	insight.Start(request)
 	defer insight.Close()
-	request := t.newReq()
 	if t.options.isCached {
 		_requestHash, err := GetHash(msg.Data)
 		if err != nil {
 			insight.Error(err)
 			headers.Add("status", "FAIL:REQUEST:HASH")
-			err := msg.RespondMsg(outMsg)
-			if err != nil {
-				insight.Error(err)
-			}
+			t.error(insight, msg, outMsg)
 			return
 		}
 		requestHash = _requestHash
@@ -137,11 +172,7 @@ func (t NATSService[TReq, TRes, TFuncType]) handler(msg *nats.Msg) {
 		if err == nil {
 			headers.Add("status", "SUCCESS")
 			outMsg.Data = value.Value()
-			err := msg.RespondMsg(outMsg)
-			if err != nil {
-				insight.Error(err)
-				return
-			}
+			t.success(insight, msg, outMsg)
 			return
 		}
 	}
@@ -150,33 +181,23 @@ func (t NATSService[TReq, TRes, TFuncType]) handler(msg *nats.Msg) {
 		if err != nil {
 			insight.Error(err)
 			headers.Add("status", "FAIL:DECODE")
-			err := msg.RespondMsg(outMsg)
-			if err != nil {
-				insight.Error(err)
-			}
+			t.error(insight, msg, outMsg)
 			return
 		}
 	}
-	insight.Start(request)
 	response, err := t.handlerFn(request)
 	if err != nil {
 		insight.Error(err)
 		headers.Add("status", "FAIL:HANDLE")
-		msg.Data = []byte(err.Error())
-		err := msg.RespondMsg(outMsg)
-		if err != nil {
-			insight.Error(err)
-		}
+		headers.Add("error", err.Error())
+		t.error(insight, msg, outMsg)
 		return
 	}
 	bytes, err := t.codec.Encode(msg.Subject, response)
 	if err != nil {
 		insight.Error(err)
 		headers.Add("status", "FAIL:ENCODE")
-		err := msg.RespondMsg(outMsg)
-		if err != nil {
-			insight.Error(err)
-		}
+		t.error(insight, msg, outMsg)
 		return
 	}
 	if t.options.isCached {
@@ -187,11 +208,7 @@ func (t NATSService[TReq, TRes, TFuncType]) handler(msg *nats.Msg) {
 	}
 	headers.Add("status", "SUCCESS")
 	outMsg.Data = bytes
-	err = msg.RespondMsg(outMsg)
-	if err != nil {
-		insight.Error(err)
-		return
-	}
+	t.success(insight, msg, outMsg)
 }
 
 func GetHash(bytes []byte) (string, error) {
@@ -225,5 +242,19 @@ func WithCache(ttl time.Duration) Option {
 	return func(n *NATSServiceOptions) {
 		n.isCached = true
 		n.ttl = ttl
+	}
+}
+
+func WithOnSuccessCallBacks(namespaces ...string) Option {
+	return func(no *NATSServiceOptions) {
+		no.onsuccess = make([]string, 0)
+		no.onsuccess = append(no.onsuccess, namespaces...)
+	}
+}
+
+func WithOnFailureCallBacks(namespaces ...string) Option {
+	return func(no *NATSServiceOptions) {
+		no.onerror = make([]string, 0)
+		no.onerror = append(no.onerror, namespaces...)
 	}
 }
