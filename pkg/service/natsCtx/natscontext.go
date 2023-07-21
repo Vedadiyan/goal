@@ -1,11 +1,13 @@
-package context
+package natsCtx
 
 import (
 	"github.com/nats-io/nats.go"
 	"github.com/vedadiyan/goal/pkg/insight"
 )
 
-type NATSContext struct {
+type Header map[string]string
+
+type NatsCtx struct {
 	conn        *nats.Conn
 	insight     insight.IExecutionContext
 	requestMsg  *nats.Msg
@@ -14,8 +16,8 @@ type NATSContext struct {
 	onerror     []string
 }
 
-func NewNatsContext(conn *nats.Conn, insight insight.IExecutionContext, msg *nats.Msg, onerror []string, onsuccess []string) *NATSContext {
-	return &NATSContext{
+func New(conn *nats.Conn, insight insight.IExecutionContext, msg *nats.Msg, onerror []string, onsuccess []string) *NatsCtx {
+	return &NatsCtx{
 		conn:        conn,
 		insight:     insight,
 		requestMsg:  msg,
@@ -25,7 +27,7 @@ func NewNatsContext(conn *nats.Conn, insight insight.IExecutionContext, msg *nat
 	}
 }
 
-func (nc *NATSContext) Error(headers map[string]string) {
+func (nc *NatsCtx) Error(headers Header) {
 	for key, value := range headers {
 		nc.responseMsg.Header.Add(key, value)
 	}
@@ -49,7 +51,7 @@ func (nc *NATSContext) Error(headers map[string]string) {
 	}
 
 }
-func (nc *NATSContext) Success(data []byte, headers map[string]string) {
+func (nc *NatsCtx) Success(data []byte, headers Header) {
 	for key, value := range headers {
 		nc.responseMsg.Header.Add(key, value)
 	}
