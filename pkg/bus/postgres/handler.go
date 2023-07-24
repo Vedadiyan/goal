@@ -85,32 +85,36 @@ func (listener *Listener) listen(ctx context.Context) error {
 				}
 			case notification := <-listener.next(ctx):
 				{
-					if notification.Err != nil {
-						continue
-					}
-					check, err := listener.tryEnter(ctx, notification.Packet.Payload)
-					if err != nil {
-						continue
-					}
-					if !check {
-						continue
-					}
-					var msgFrame MsgFrame
-					err = json.Unmarshal([]byte(notification.Packet.Payload), &msgFrame)
-					if err != nil {
-						continue
-					}
-					if handler, ok := listener.subscribers["*"]; ok {
-						go handler(map[string]any{"msg": msgFrame})
-					}
-					if handler, ok := listener.subscribers[msgFrame.Subject]; ok {
-						go handler(msgFrame.Data)
-					}
+					listener.handle(ctx, notification)
 				}
 			}
 		}
 	}()
 	return nil
+}
+
+func (listener *Listener) handle(ctx context.Context, notification *Msg) {
+	if notification.Err != nil {
+		return
+	}
+	check, err := listener.tryEnter(ctx, notification.Packet.Payload)
+	if err != nil {
+		return
+	}
+	if !check {
+		return
+	}
+	var msgFrame MsgFrame
+	err = json.Unmarshal([]byte(notification.Packet.Payload), &msgFrame)
+	if err != nil {
+		return
+	}
+	if handler, ok := listener.subscribers["*"]; ok {
+		go handler(map[string]any{"msg": msgFrame})
+	}
+	if handler, ok := listener.subscribers[msgFrame.Subject]; ok {
+		go handler(msgFrame.Data)
+	}
 }
 
 func (listener *Listener) Subscribe(subject string, handler func(payload map[string]any)) {
