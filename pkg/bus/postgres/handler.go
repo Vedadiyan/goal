@@ -67,9 +67,12 @@ func (listener *Listener) init(ctx context.Context) error {
 }
 
 func (listener *Listener) listen(ctx context.Context) error {
-	listener.init(ctx)
+	err := listener.init(ctx)
+	if err != nil {
+		return err
+	}
 	cmd := fmt.Sprintf("LISTEN %s;", listener.channel)
-	_, err := listener.conn.Exec(ctx, cmd)
+	_, err = listener.conn.Exec(ctx, cmd)
 	if err != nil {
 		return err
 	}
