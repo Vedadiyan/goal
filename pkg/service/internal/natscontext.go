@@ -16,7 +16,7 @@ type NatsCtx struct {
 	onerror     []string
 }
 
-func New(conn *nats.Conn, insight insight.IExecutionContext, msg *nats.Msg, onerror []string, onsuccess []string) *NatsCtx {
+func NewNatsCtx(conn *nats.Conn, insight insight.IExecutionContext, msg *nats.Msg, onerror []string, onsuccess []string) *NatsCtx {
 	return &NatsCtx{
 		conn:        conn,
 		insight:     insight,
