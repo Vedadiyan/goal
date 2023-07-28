@@ -147,7 +147,7 @@ func (t NATSService[TReq, TRes, TFuncType]) handler(msg *nats.Msg) {
 	response, err := t.handlerFn(request)
 	if err != nil {
 		insight.Error(err)
-		ctx.Error(internal.Header{"status": "FAIL:HANDLE", "error": err.Error()})
+		ctx.Error(internal.Header{"status": "FAIL:HANDLE", "error": strings.ReplaceAll(err.Error(), "\"", "\\\"")})
 		return
 	}
 	bytes, err := t.codec.Encode(msg.Subject, response)
