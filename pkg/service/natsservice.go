@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
+	"reflect"
 	"strings"
 	"time"
 
@@ -174,16 +175,22 @@ func GetHash(bytes []byte) (string, error) {
 	return base64.URLEncoding.EncodeToString(requestHash), nil
 }
 
-func New[TReq proto.Message, TRes proto.Message, TFuncType ~func(TReq) (TRes, error)](connName string, namespace string, queue string, handlerFn TFuncType, newReq func() TReq, newRes func() TRes, options ...Option) *NATSService[TReq, TRes, TFuncType] {
+func New[TReq proto.Message, TRes proto.Message, TFuncType ~func(TReq) (TRes, error)](connName string, namespace string, queue string, handlerFn TFuncType, options ...Option) *NATSService[TReq, TRes, TFuncType] {
+	tReq := reflect.TypeOf(*new(TReq)).Elem()
+	tRes := reflect.TypeOf(*new(TRes)).Elem()
 	service := NATSService[TReq, TRes, TFuncType]{
 		namespace:   namespace,
 		queue:       queue,
 		handlerFn:   handlerFn,
 		connName:    connName,
 		reloadState: make(chan ReloadStates),
-		newReq:      newReq,
-		newRes:      newRes,
-		codec:       &codecs.CompressedProtoConn{},
+		newReq: func() TReq {
+			return reflect.New(tReq).Interface().(TReq)
+		},
+		newRes: func() TRes {
+			return reflect.New(tRes).Interface().(TRes)
+		},
+		codec: &codecs.CompressedProtoConn{},
 	}
 	for _, option := range options {
 		option(&service.options)
