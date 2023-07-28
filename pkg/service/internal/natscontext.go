@@ -28,17 +28,19 @@ func NewNatsCtx(conn *nats.Conn, insight insight.IExecutionContext, msg *nats.Ms
 }
 
 func (nc *NatsCtx) Error(headers Header) {
+	msg := &nats.Msg{}
+	msg.Header = nats.Header{}
 	for key, value := range headers {
-		nc.responseMsg.Header.Add(key, value)
+		msg.Header.Add(key, value)
 	}
-	err := nc.requestMsg.RespondMsg(nc.responseMsg)
+	err := nc.requestMsg.RespondMsg(msg)
 	if err != nil {
 		nc.insight.Error(err)
 	}
 	if nc.onerror == nil {
 		return
 	}
-	onErrorResponse := *nc.responseMsg
+	onErrorResponse := *msg
 	onErrorResponse.Reply = ""
 	onErrorResponse.Data = nc.requestMsg.Data
 	for _, namespace := range nc.onerror {
@@ -52,17 +54,20 @@ func (nc *NatsCtx) Error(headers Header) {
 
 }
 func (nc *NatsCtx) Success(data []byte, headers Header) {
+	msg := &nats.Msg{}
+	msg.Header = nats.Header{}
 	for key, value := range headers {
-		nc.responseMsg.Header.Add(key, value)
+		msg.Header.Add(key, value)
 	}
-	err := nc.requestMsg.RespondMsg(nc.responseMsg)
+	msg.Data = data
+	err := nc.requestMsg.RespondMsg(msg)
 	if err != nil {
 		nc.insight.Error(err)
 	}
 	if nc.onsuccess == nil {
 		return
 	}
-	onSuccessResponse := *nc.responseMsg
+	onSuccessResponse := *msg
 	onSuccessResponse.Reply = ""
 	onSuccessResponse.Data = data
 	for _, namespace := range nc.onsuccess {
