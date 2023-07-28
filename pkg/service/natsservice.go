@@ -115,13 +115,21 @@ func (t NATSService[TReq, TRes, TFuncType]) Reload() chan ReloadStates {
 func (t NATSService[TReq, TRes, TFuncType]) handler(msg *nats.Msg) {
 	var requestHash string
 	insight := insight.New(t.namespace, msg.Reply)
+	defer insight.Close()
 	ctx := internal.NewNatsCtx(t.conn, insight, msg, t.options.onerror, t.options.onsuccess)
 	request := t.newReq()
 	insight.OnFailure(func() {
 		ctx.Error(internal.Header{"status": "FAIL:RECOVERED"})
 	})
+	if len(msg.Data) > 0 {
+		err := t.codec.Decode(msg.Subject, msg.Data, request)
+		if err != nil {
+			insight.Error(err)
+			ctx.Error(internal.Header{"status": "FAIL:DECODE"})
+			return
+		}
+	}
 	insight.Start(request)
-	defer insight.Close()
 	if t.options.isCached {
 		_requestHash, err := GetHash(msg.Data)
 		if err != nil {
@@ -133,14 +141,6 @@ func (t NATSService[TReq, TRes, TFuncType]) handler(msg *nats.Msg) {
 		value, err := (*t.bucket).Get(requestHash)
 		if err == nil {
 			ctx.Success(value.Value(), internal.Header{"status": "SUCCESS"})
-			return
-		}
-	}
-	if len(msg.Data) > 0 {
-		err := t.codec.Decode(msg.Subject, msg.Data, request)
-		if err != nil {
-			insight.Error(err)
-			ctx.Error(internal.Header{"status": "FAIL:DECODE"})
 			return
 		}
 	}
