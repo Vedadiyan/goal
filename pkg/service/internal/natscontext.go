@@ -41,7 +41,6 @@ func (nc *NatsCtx) Error(headers Header) {
 		return
 	}
 	onErrorResponse := *msg
-	onErrorResponse.Reply = ""
 	onErrorResponse.Data = nc.requestMsg.Data
 	for _, namespace := range nc.onerror {
 		msg := onErrorResponse
@@ -68,7 +67,6 @@ func (nc *NatsCtx) Success(data []byte, headers Header) {
 		return
 	}
 	onSuccessResponse := *msg
-	onSuccessResponse.Reply = ""
 	onSuccessResponse.Data = data
 	for _, namespace := range nc.onsuccess {
 		msg := onSuccessResponse
