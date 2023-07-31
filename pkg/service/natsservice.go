@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
+	"reflect"
 	"strings"
 	"time"
 
@@ -11,14 +12,17 @@ import (
 	codecs "github.com/vedadiyan/goal/pkg/bus/nats"
 	"github.com/vedadiyan/goal/pkg/di"
 	"github.com/vedadiyan/goal/pkg/insight"
+	internal "github.com/vedadiyan/goal/pkg/service/internal"
 	"google.golang.org/protobuf/proto"
 )
 
 type Option func(*NATSServiceOptions)
 
 type NATSServiceOptions struct {
-	isCached bool
-	ttl      time.Duration
+	isCached  bool
+	ttl       time.Duration
+	onsuccess []string
+	onerror   []string
 }
 
 type NATSService[TReq proto.Message, TRes proto.Message, TFuncType ~func(TReq) (TRes, error)] struct {
@@ -107,76 +111,49 @@ func (t NATSService[TReq, TRes, TFuncType]) Shutdown() error {
 func (t NATSService[TReq, TRes, TFuncType]) Reload() chan ReloadStates {
 	return t.reloadState
 }
+
 func (t NATSService[TReq, TRes, TFuncType]) handler(msg *nats.Msg) {
 	var requestHash string
-	headers := nats.Header{}
-	outMsg := &nats.Msg{Subject: msg.Reply, Header: headers}
 	insight := insight.New(t.namespace, msg.Reply)
+	defer insight.Close()
+	ctx := internal.NewNatsCtx(t.conn, insight, msg, t.options.onerror, t.options.onsuccess)
+	request := t.newReq()
 	insight.OnFailure(func() {
-		headers.Add("status", "FAIL:RECOVERED")
-		err := msg.RespondMsg(outMsg)
+		ctx.Error(internal.Header{"status": "FAIL:RECOVERED"})
+	})
+	if len(msg.Data) > 0 {
+		err := t.codec.Decode(msg.Subject, msg.Data, request)
 		if err != nil {
 			insight.Error(err)
+			ctx.Error(internal.Header{"status": "FAIL:DECODE"})
+			return
 		}
-	})
-	defer insight.Close()
-	request := t.newReq()
+	}
+	insight.Start(request)
 	if t.options.isCached {
 		_requestHash, err := GetHash(msg.Data)
 		if err != nil {
 			insight.Error(err)
-			headers.Add("status", "FAIL:REQUEST:HASH")
-			err := msg.RespondMsg(outMsg)
-			if err != nil {
-				insight.Error(err)
-			}
+			ctx.Error(internal.Header{"status": "FAIL:REQUEST:HASH"})
 			return
 		}
 		requestHash = _requestHash
 		value, err := (*t.bucket).Get(requestHash)
 		if err == nil {
-			headers.Add("status", "SUCCESS")
-			outMsg.Data = value.Value()
-			err := msg.RespondMsg(outMsg)
-			if err != nil {
-				insight.Error(err)
-				return
-			}
+			ctx.Success(value.Value(), internal.Header{"status": "SUCCESS"})
 			return
 		}
 	}
-	if len(msg.Data) > 0 {
-		err := t.codec.Decode(msg.Subject, msg.Data, request)
-		if err != nil {
-			insight.Error(err)
-			headers.Add("status", "FAIL:DECODE")
-			err := msg.RespondMsg(outMsg)
-			if err != nil {
-				insight.Error(err)
-			}
-			return
-		}
-	}
-	insight.Start(request)
 	response, err := t.handlerFn(request)
 	if err != nil {
 		insight.Error(err)
-		headers.Add("status", "FAIL:HANDLE")
-		msg.Data = []byte(err.Error())
-		err := msg.RespondMsg(outMsg)
-		if err != nil {
-			insight.Error(err)
-		}
+		ctx.Error(internal.Header{"status": "FAIL:HANDLE", "error": strings.ReplaceAll(err.Error(), "\"", "\\\"")})
 		return
 	}
 	bytes, err := t.codec.Encode(msg.Subject, response)
 	if err != nil {
 		insight.Error(err)
-		headers.Add("status", "FAIL:ENCODE")
-		err := msg.RespondMsg(outMsg)
-		if err != nil {
-			insight.Error(err)
-		}
+		ctx.Error(internal.Header{"status": "FAIL:ENCODE"})
 		return
 	}
 	if t.options.isCached {
@@ -185,13 +162,7 @@ func (t NATSService[TReq, TRes, TFuncType]) handler(msg *nats.Msg) {
 			insight.Warn(err)
 		}
 	}
-	headers.Add("status", "SUCCESS")
-	outMsg.Data = bytes
-	err = msg.RespondMsg(outMsg)
-	if err != nil {
-		insight.Error(err)
-		return
-	}
+	ctx.Success(bytes, internal.Header{"status": "SUCCESS"})
 }
 
 func GetHash(bytes []byte) (string, error) {
@@ -204,16 +175,22 @@ func GetHash(bytes []byte) (string, error) {
 	return base64.URLEncoding.EncodeToString(requestHash), nil
 }
 
-func New[TReq proto.Message, TRes proto.Message, TFuncType ~func(TReq) (TRes, error)](connName string, namespace string, queue string, handlerFn TFuncType, newReq func() TReq, newRes func() TRes, options ...Option) *NATSService[TReq, TRes, TFuncType] {
+func New[TReq proto.Message, TRes proto.Message, TFuncType ~func(TReq) (TRes, error)](connName string, namespace string, queue string, handlerFn TFuncType, options ...Option) *NATSService[TReq, TRes, TFuncType] {
+	tReq := reflect.TypeOf(*new(TReq)).Elem()
+	tRes := reflect.TypeOf(*new(TRes)).Elem()
 	service := NATSService[TReq, TRes, TFuncType]{
 		namespace:   namespace,
 		queue:       queue,
 		handlerFn:   handlerFn,
 		connName:    connName,
 		reloadState: make(chan ReloadStates),
-		newReq:      newReq,
-		newRes:      newRes,
-		codec:       &codecs.CompressedProtoConn{},
+		newReq: func() TReq {
+			return reflect.New(tReq).Interface().(TReq)
+		},
+		newRes: func() TRes {
+			return reflect.New(tRes).Interface().(TRes)
+		},
+		codec: &codecs.CompressedProtoConn{},
 	}
 	for _, option := range options {
 		option(&service.options)
@@ -225,5 +202,19 @@ func WithCache(ttl time.Duration) Option {
 	return func(n *NATSServiceOptions) {
 		n.isCached = true
 		n.ttl = ttl
+	}
+}
+
+func WithOnSuccessCallBacks(namespaces ...string) Option {
+	return func(no *NATSServiceOptions) {
+		no.onsuccess = make([]string, 0)
+		no.onsuccess = append(no.onsuccess, namespaces...)
+	}
+}
+
+func WithOnFailureCallBacks(namespaces ...string) Option {
+	return func(no *NATSServiceOptions) {
+		no.onerror = make([]string, 0)
+		no.onerror = append(no.onerror, namespaces...)
 	}
 }
