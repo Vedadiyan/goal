@@ -118,8 +118,8 @@ func (t NATSService[TReq, TRes, TFuncType]) handler(msg *nats.Msg) {
 	defer insight.Close()
 	ctx := internal.NewNatsCtx(t.conn, insight, msg, t.options.onerror, t.options.onsuccess)
 	request := t.newReq()
-	insight.OnFailure(func() {
-		ctx.Error(internal.Header{"status": "FAIL:RECOVERED"})
+	insight.OnFailure(func(err error) {
+		ctx.Error(internal.Header{"status": "FAIL:RECOVERED", "error": err.Error()})
 	})
 	if len(msg.Data) > 0 {
 		err := t.codec.Decode(msg.Subject, msg.Data, request)

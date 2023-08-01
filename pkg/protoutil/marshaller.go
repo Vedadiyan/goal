@@ -3,9 +3,13 @@ package protoutil
 import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 func Marshal(message proto.Message) (map[string]any, error) {
+	if structPb, ok := message.(*structpb.Struct); ok {
+		return structPb.AsMap(), nil
+	}
 	mapper := make(map[string]any)
 	err := marshallerNext(message, "", mapper)
 	if err != nil {
