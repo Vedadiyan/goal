@@ -12,6 +12,7 @@ import (
 	codecs "github.com/vedadiyan/goal/pkg/bus/nats"
 	"github.com/vedadiyan/goal/pkg/di"
 	"github.com/vedadiyan/goal/pkg/insight"
+	internal "github.com/vedadiyan/goal/pkg/service/internal"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -110,95 +111,49 @@ func (t NATSService[TReq, TRes, TFuncType]) Shutdown() error {
 func (t NATSService[TReq, TRes, TFuncType]) Reload() chan ReloadStates {
 	return t.reloadState
 }
-func (t NATSService[TReq, TRes, TFuncType]) error(insight insight.IExecutionContext, originalMsg *nats.Msg, responseMsg *nats.Msg) {
-	err := originalMsg.RespondMsg(responseMsg)
-	if err != nil {
-		insight.Error(err)
-	}
-	if t.options.onerror == nil {
-		return
-	}
-	onErrorResponse := *responseMsg
-	onErrorResponse.Data = originalMsg.Data
-	for _, namespace := range t.options.onerror {
-		msg := onErrorResponse
-		msg.Subject = namespace
-		err := t.conn.PublishMsg(&msg)
-		if err != nil {
-			insight.Error(err)
-		}
-	}
-}
-func (t NATSService[TReq, TRes, TFuncType]) success(insight insight.IExecutionContext, originalMsg *nats.Msg, responseMsg *nats.Msg) {
-	err := originalMsg.RespondMsg(responseMsg)
-	if err != nil {
-		insight.Error(err)
-	}
-	if t.options.onsuccess == nil {
-		return
-	}
-	onSuccessResponse := *responseMsg
-	onSuccessResponse.Data = originalMsg.Data
-	for _, namespace := range t.options.onsuccess {
-		msg := onSuccessResponse
-		msg.Subject = namespace
-		err := t.conn.PublishMsg(&msg)
-		if err != nil {
-			insight.Error(err)
-		}
-	}
-}
+
 func (t NATSService[TReq, TRes, TFuncType]) handler(msg *nats.Msg) {
 	var requestHash string
-	headers := nats.Header{}
-	outMsg := &nats.Msg{Subject: msg.Reply, Header: headers}
 	insight := insight.New(t.namespace, msg.Reply)
+	defer insight.Close()
+	ctx := internal.NewNatsCtx(t.conn, insight, msg, t.options.onerror, t.options.onsuccess)
 	request := t.newReq()
 	insight.OnFailure(func(err error) {
-		headers.Add("status", "FAIL:RECOVERED")
-		t.error(insight, msg, outMsg)
+		ctx.Error(internal.Header{"status": "FAIL:RECOVERED", "error": err.Error()})
 	})
+	if len(msg.Data) > 0 {
+		err := t.codec.Decode(msg.Subject, msg.Data, request)
+		if err != nil {
+			insight.Error(err)
+			ctx.Error(internal.Header{"status": "FAIL:DECODE"})
+			return
+		}
+	}
 	insight.Start(request)
-	defer insight.Close()
 	if t.options.isCached {
 		_requestHash, err := GetHash(msg.Data)
 		if err != nil {
 			insight.Error(err)
-			headers.Add("status", "FAIL:REQUEST:HASH")
-			t.error(insight, msg, outMsg)
+			ctx.Error(internal.Header{"status": "FAIL:REQUEST:HASH"})
 			return
 		}
 		requestHash = _requestHash
 		value, err := (*t.bucket).Get(requestHash)
 		if err == nil {
-			headers.Add("status", "SUCCESS")
-			outMsg.Data = value.Value()
-			t.success(insight, msg, outMsg)
-			return
-		}
-	}
-	if len(msg.Data) > 0 {
-		err := t.codec.Decode(msg.Subject, msg.Data, request)
-		if err != nil {
-			insight.Error(err)
-			headers.Add("status", "FAIL:DECODE")
-			t.error(insight, msg, outMsg)
+			ctx.Success(value.Value(), internal.Header{"status": "SUCCESS"})
 			return
 		}
 	}
 	response, err := t.handlerFn(request)
 	if err != nil {
 		insight.Error(err)
-		headers.Add("status", "FAIL:HANDLE")
-		headers.Add("error", err.Error())
-		t.error(insight, msg, outMsg)
+		ctx.Error(internal.Header{"status": "FAIL:HANDLE", "error": strings.ReplaceAll(err.Error(), "\"", "\\\"")})
 		return
 	}
 	bytes, err := t.codec.Encode(msg.Subject, response)
 	if err != nil {
 		insight.Error(err)
-		headers.Add("status", "FAIL:ENCODE")
-		t.error(insight, msg, outMsg)
+		ctx.Error(internal.Header{"status": "FAIL:ENCODE"})
 		return
 	}
 	if t.options.isCached {
@@ -207,9 +162,7 @@ func (t NATSService[TReq, TRes, TFuncType]) handler(msg *nats.Msg) {
 			insight.Warn(err)
 		}
 	}
-	headers.Add("status", "SUCCESS")
-	outMsg.Data = bytes
-	t.success(insight, msg, outMsg)
+	ctx.Success(bytes, internal.Header{"status": "SUCCESS"})
 }
 
 func GetHash(bytes []byte) (string, error) {
