@@ -8,6 +8,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/vedadiyan/goal/pkg/db/postgres/sanitize"
 	"github.com/vedadiyan/goal/pkg/di"
 )
 
@@ -29,7 +30,7 @@ func getPgxSql(sql string, arguments map[string]any) (string, []any) {
 	index := 0
 	_arguments := make([]any, len(arguments))
 	for key, value := range arguments {
-		_sql = strings.ReplaceAll(_sql, key, fmt.Sprintf("$%d", index+1))
+		_sql = strings.ReplaceAll(_sql, fmt.Sprintf("\"%s\"", key), fmt.Sprintf("$%d", index+1))
 		_arguments[index] = value
 		index++
 	}
@@ -38,7 +39,11 @@ func getPgxSql(sql string, arguments map[string]any) (string, []any) {
 
 func (pool *Pool) Exec(ctx context.Context, sql string, arguments map[string]any) (pgconn.CommandTag, error) {
 	_sql, _arguments := getPgxSql(sql, arguments)
-	return pool.pool.Exec(ctx, _sql, _arguments...)
+	str, err := sanitize.SanitizeSQL(_sql, _arguments...)
+	if err != nil {
+		return pgconn.CommandTag{}, err
+	}
+	return pool.pool.Exec(ctx, str)
 }
 
 func (pool *Pool) BeginTx(ctx context.Context, txOptions pgx.TxOptions) (pgx.Tx, error) {
