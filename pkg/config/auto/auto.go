@@ -2,6 +2,9 @@ package config_auto
 
 import (
 	"context"
+	"encoding/json"
+	"os"
+	"strings"
 	"sync"
 
 	"github.com/vedadiyan/goal/pkg/config"
@@ -11,19 +14,23 @@ import (
 type Initializer interface {
 	Init(value any) error
 }
-
 type String struct {
 	Key   string
 	Watch bool
 	CB    func(value string)
 }
-
 type KeyValue map[string]any
-
 type Object struct {
 	Key   string
 	Watch bool
 	CB    func(value KeyValue)
+}
+type ConfigMapBootstrapper struct{}
+type ConfigBootstrapper interface {
+	Bootstap() error
+}
+type ETCDBootstrapper struct {
+	url string
 }
 
 var _initializers sync.Pool
@@ -54,8 +61,58 @@ func (o Object) Init(value any) error {
 func Register(initializer Initializer) {
 	_initializers.Put(initializer)
 }
-func Bootstrap(url string) error {
-	etcdCnfxReader, err := config_etcd.NewClient([]string{url})
+func (configMapBootstrapper *ConfigMapBootstrapper) Bootstrap() error {
+	env := make(map[string]string)
+	for _, item := range os.Environ() {
+		keyValue := strings.SplitN(item, "=", 2)
+		env[keyValue[0]] = keyValue[1]
+
+	}
+
+	for {
+		value := _initializers.Get()
+		if value == nil {
+			break
+		}
+		initializer := value.(Initializer)
+		switch t := initializer.(type) {
+		case String:
+			{
+				value, ok := env[t.Key]
+				if !ok {
+					return config.KEY_NOT_FOUND
+				}
+				if t.CB != nil {
+					err := t.Init(value)
+					if err != nil {
+						return err
+					}
+				}
+			}
+		case Object:
+			{
+				value, ok := env[t.Key]
+				if !ok {
+					return config.KEY_NOT_FOUND
+				}
+				objectValue := make(map[string]any)
+				err := json.Unmarshal([]byte(value), &objectValue)
+				if err != nil {
+					return err
+				}
+				if t.CB != nil {
+					err := t.Init(value)
+					if err != nil {
+						return err
+					}
+				}
+			}
+		}
+	}
+	return nil
+}
+func (etcdBootstrapper *ETCDBootstrapper) Bootstrap() error {
+	etcdCnfxReader, err := config_etcd.NewClient([]string{etcdBootstrapper.url})
 	if err != nil {
 		return err
 	}
@@ -119,6 +176,19 @@ func Bootstrap(url string) error {
 		}
 	}
 	return etcdCnfxReader.Close()
+}
+func ForETCD(url string) *ETCDBootstrapper {
+	etcdBootstrapper := &ETCDBootstrapper{
+		url: url,
+	}
+	return etcdBootstrapper
+}
+func ForConfigMap() *ConfigMapBootstrapper {
+	configMapBootstrapper := &ConfigMapBootstrapper{}
+	return configMapBootstrapper
+}
+func Bootstrap(configBootstrapper ConfigBootstrapper) error {
+	return configBootstrapper.Bootstap()
 }
 func New[T string | KeyValue](key string, watch bool, cb func(value T)) Initializer {
 	var value T
