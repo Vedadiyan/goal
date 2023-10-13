@@ -27,7 +27,7 @@ type Object struct {
 }
 type ConfigMapBootstrapper struct{}
 type ConfigBootstrapper interface {
-	Bootstap() error
+	Bootstrap() error
 }
 type ETCDBootstrapper struct {
 	url string
@@ -188,7 +188,7 @@ func ForConfigMap() *ConfigMapBootstrapper {
 	return configMapBootstrapper
 }
 func Bootstrap(configBootstrapper ConfigBootstrapper) error {
-	return configBootstrapper.Bootstap()
+	return configBootstrapper.Bootstrap()
 }
 func New[T string | KeyValue](key string, watch bool, cb func(value T)) Initializer {
 	var value T

@@ -37,7 +37,7 @@ func Register(service Service) {
 	_services = append(_services, service)
 }
 
-func Bootstrapper() {
+func Bootstrap() {
 	services := make([]Service, 0)
 	for _, service := range _services {
 		services = append(services, service.(Service))
