@@ -53,7 +53,7 @@ func GetJSONReq[T proto.Message](c *fiber.Ctx, req T, useMeta bool) error {
 }
 
 func Single[TRequest any, TResponse any](app *fiber.App, uri string, method string, to string, options ...GatewayOption) *proxy.NATSProxy[proto.Message] {
-	proxy := proxy.Create[TResponse]("$etcd:/nats", to)
+	proxy := proxy.Create[TResponse]("default_nats", to)
 	var gateway Gateway
 	for _, option := range options {
 		option(&gateway)
