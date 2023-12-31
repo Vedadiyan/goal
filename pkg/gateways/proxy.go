@@ -24,17 +24,17 @@ type GatewayOption func(gateway *Gateway)
 
 func GetJSONReq[T proto.Message](c *fiber.Ctx, req T, useMeta bool) error {
 	values := make(map[string]any)
-	for _, key := range c.Route().Params {
-		values[key] = c.Params(key)
-	}
-	c.Request().URI().QueryArgs().VisitAll(func(key, value []byte) {
-		values[string(key)] = string(value)
-	})
 	if len(c.Body()) != 0 {
 		err := c.BodyParser(&values)
 		if err != nil {
 			return err
 		}
+	}
+	c.Request().URI().QueryArgs().VisitAll(func(key, value []byte) {
+		values[string(key)] = string(value)
+	})
+	for _, key := range c.Route().Params {
+		values[key] = c.Params(key)
 	}
 	if useMeta {
 		meta := make(map[string]any)
