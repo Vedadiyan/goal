@@ -23,25 +23,19 @@ type Gateway struct {
 type GatewayOption func(gateway *Gateway)
 
 func GetJSONReq[T proto.Message](c *fiber.Ctx, req T, useMeta bool) error {
-	values := make(map[string]map[string]any)
-	route := make(map[string]any)
-	query := make(map[string]any)
-	body := make(map[string]any)
+	values := make(map[string]any)
 	for _, key := range c.Route().Params {
-		route[key] = c.Params(key)
+		values[key] = c.Params(key)
 	}
 	c.Request().URI().QueryArgs().VisitAll(func(key, value []byte) {
-		query[string(key)] = string(value)
+		values[string(key)] = string(value)
 	})
 	if len(c.Body()) != 0 {
-		err := c.BodyParser(&body)
+		err := c.BodyParser(&values)
 		if err != nil {
 			return err
 		}
 	}
-	values["route"] = route
-	values["query"] = query
-	values["body"] = body
 	if useMeta {
 		meta := make(map[string]any)
 		meta["remote_ip"] = c.Context().RemoteIP()
