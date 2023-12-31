@@ -35,33 +35,33 @@ type options struct {
 }
 
 type singleton[T any] struct {
-	ig       func() (instance T, err error)
+	ig       func() (instance *T, err error)
 	created  bool
 	instance *T
 	err      error
 	once     sync.Once
 }
 
-func (s *singleton[T]) getInstance() (instance T, err error) {
+func (s *singleton[T]) getInstance() (instance *T, err error) {
 	s.once.Do(func() {
 		value, err := s.ig()
-		s.instance = &value
+		s.instance = value
 		s.err = err
 		s.created = true
 	})
-	return *s.instance, s.err
+	return s.instance, s.err
 }
 
 func NewOptions(scopeId uint64, ttl time.Duration) *options {
 	return &options{scopeId, ttl}
 }
 
-func AddSinleton[T any](service func() (instance T, err error)) error {
+func AddSinleton[T any](service func() (instance *T, err error)) error {
 	name := nameOf[T]()
 	return AddSinletonWithName(name, service)
 }
 
-func AddSinletonWithName[T any](name string, service func() (instance T, err error)) error {
+func AddSinletonWithName[T any](name string, service func() (instance *T, err error)) error {
 	singleton := singleton[T]{
 		ig: service,
 	}
@@ -72,21 +72,21 @@ func AddSinletonWithName[T any](name string, service func() (instance T, err err
 	return nil
 }
 
-func RefreshSinleton[T any](service func(current T) (instance T, err error)) (*T, error) {
+func RefreshSinleton[T any](service func(current *T) (instance *T, err error)) (*T, error) {
 	name := nameOf[T]()
 	return RefreshSinletonWithName(name, service)
 }
 
-func RefreshSinletonWithName[T any](name string, newService func(current T) (instance T, err error)) (*T, error) {
+func RefreshSinletonWithName[T any](name string, newService func(current *T) (instance *T, err error)) (*T, error) {
 	_refreshMute.Lock()
 	defer _refreshMute.Unlock()
 	old, err := ResolveWithName[T](name, nil)
 	if err != nil {
 		return nil, err
 	}
-	new, e := newService(*old)
+	new, e := newService(old)
 	singleton := singleton[T]{
-		ig: func() (instance T, err error) {
+		ig: func() (instance *T, err error) {
 			return new, e
 		},
 	}
@@ -114,12 +114,12 @@ func OnRefreshWithName(name string, cb func(Events)) {
 	_refresh.Store(name, value)
 }
 
-func AddTransient[T any](service func() (instance T, err error)) error {
+func AddTransient[T any](service func() (instance *T, err error)) error {
 	name := nameOf[T]()
 	return AddTransientWithName(name, service)
 }
 
-func AddTransientWithName[T any](name string, service func() (instance T, err error)) error {
+func AddTransientWithName[T any](name string, service func() (instance *T, err error)) error {
 	if _, ok := _context.Load(name); ok {
 		return objectAlreadyExistsError(name)
 	}
@@ -128,12 +128,12 @@ func AddTransientWithName[T any](name string, service func() (instance T, err er
 	return nil
 }
 
-func RefreshTransient[T any](service func() (instance T, err error)) error {
+func RefreshTransient[T any](service func() (instance *T, err error)) error {
 	name := nameOf[T]()
 	return RefreshTransientWithName(name, service)
 }
 
-func RefreshTransientWithName[T any](name string, service func() (instance T, err error)) error {
+func RefreshTransientWithName[T any](name string, service func() (instance *T, err error)) error {
 	_refreshMute.Lock()
 	defer _refreshMute.Unlock()
 	_context.Store(name, service)
@@ -147,12 +147,12 @@ func RefreshTransientWithName[T any](name string, service func() (instance T, er
 	return nil
 }
 
-func AddScoped[T any](service func() (instance T, err error)) error {
+func AddScoped[T any](service func() (instance *T, err error)) error {
 	name := nameOf[T]()
 	return AddScopedWithName(name, service)
 }
 
-func AddScopedWithName[T any](name string, service func() (instance T, err error)) error {
+func AddScopedWithName[T any](name string, service func() (instance *T, err error)) error {
 	if _, ok := _context.LoadOrStore(name, service); ok {
 		return objectAlreadyExistsError(name)
 	}
@@ -160,12 +160,12 @@ func AddScopedWithName[T any](name string, service func() (instance T, err error
 	return nil
 }
 
-func RefreshScoped[T any](service func() (instance T, err error)) error {
+func RefreshScoped[T any](service func() (instance *T, err error)) error {
 	name := nameOf[T]()
 	return RefreshScopedWithName(name, service)
 }
 
-func RefreshScopedWithName[T any](name string, service func() (instance T, err error)) error {
+func RefreshScopedWithName[T any](name string, service func() (instance *T, err error)) error {
 	_refreshMute.Lock()
 	defer _refreshMute.Unlock()
 	_contextTypes.Store(name, SCOPED)
@@ -246,16 +246,16 @@ func resolveSingleton[T any](object any, name string) (instance *T, err error) {
 		return nil, invalidCastError(name)
 	}
 	inst, err := value.getInstance()
-	return &inst, err
+	return inst, err
 }
 
 func resolveTransient[T any](object any, name string) (instance *T, err error) {
-	value, ok := object.(func() (instance T, err error))
+	value, ok := object.(func() (instance *T, err error))
 	if !ok {
 		return nil, invalidCastError(name)
 	}
 	inst, err := value()
-	return &inst, err
+	return inst, err
 }
 
 func resolveScoped[T any](options *options, object any, name string) (instance *T, err error) {
@@ -269,16 +269,16 @@ func resolveScoped[T any](options *options, object any, name string) (instance *
 		}
 		return nil, invalidCastError(name)
 	}
-	value, ok := object.(func() (instance T, err error))
+	value, ok := object.(func() (instance *T, err error))
 	if !ok {
 		return nil, invalidCastError(name)
 	}
 	inst, err := value()
-	_scopedContext.Store(options.scopeId, &inst)
+	_scopedContext.Store(options.scopeId, inst)
 	time.AfterFunc(options.ttl, func() {
 		_scopedContext.Delete(options.scopeId)
 	})
-	return &inst, err
+	return inst, err
 }
 
 func nameOf[T any]() string {
