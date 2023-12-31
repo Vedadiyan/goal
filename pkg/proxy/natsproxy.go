@@ -51,7 +51,7 @@ func (p NATSProxy[TResponse]) Send(request proto.Message) (*TResponse, error) {
 	return &res, nil
 }
 func New[TResponse proto.Message](connName string, namespace string, newRes func() TResponse) *NATSProxy[TResponse] {
-	conn := *di.ResolveWithNameOrPanic[*nats.Conn](connName, nil)
+	conn := di.ResolveWithNameOrPanic[nats.Conn](connName, nil)
 	natsProxy := NATSProxy[TResponse]{
 		namespace: namespace,
 		conn:      conn,
@@ -59,13 +59,13 @@ func New[TResponse proto.Message](connName string, namespace string, newRes func
 		new:       newRes,
 	}
 	di.OnRefreshWithName(connName, func(e di.Events) {
-		natsProxy.conn = *di.ResolveWithNameOrPanic[*nats.Conn](connName, nil)
+		natsProxy.conn = di.ResolveWithNameOrPanic[nats.Conn](connName, nil)
 	})
 	return &natsProxy
 }
 
 func Create[TResponse any](connName string, namespace string) *NATSProxy[proto.Message] {
-	conn := *di.ResolveWithNameOrPanic[*nats.Conn](connName, nil)
+	conn := di.ResolveWithNameOrPanic[nats.Conn](connName, nil)
 	natsProxy := NATSProxy[proto.Message]{
 		namespace: namespace,
 		conn:      conn,
@@ -76,7 +76,7 @@ func Create[TResponse any](connName string, namespace string) *NATSProxy[proto.M
 		},
 	}
 	di.OnRefreshWithName(connName, func(e di.Events) {
-		natsProxy.conn = *di.ResolveWithNameOrPanic[*nats.Conn](connName, nil)
+		natsProxy.conn = di.ResolveWithNameOrPanic[nats.Conn](connName, nil)
 	})
 	return &natsProxy
 }

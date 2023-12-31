@@ -99,7 +99,7 @@ func New(dsn string, maxConn int, minConn int) (*Pool, error) {
 }
 
 func Handle(dsn string, _type Type, sql string, arguments map[string]any) ([]map[string]any, error) {
-	pool := *di.ResolveWithNameOrPanic[*Pool](dsn, nil)
+	pool := di.ResolveWithNameOrPanic[Pool](dsn, nil)
 	switch _type {
 	case COMMAND:
 		{

@@ -50,7 +50,7 @@ func (t *NATSService[TReq, TRes, TFuncType]) Configure(b bool) {
 			}
 		})
 	}
-	t.conn = *di.ResolveWithNameOrPanic[*nats.Conn](t.connName, nil)
+	t.conn = di.ResolveWithNameOrPanic[nats.Conn](t.connName, nil)
 }
 func (t *NATSService[TReq, TRes, TFuncType]) configureCache() error {
 	js, err := t.conn.JetStream()
