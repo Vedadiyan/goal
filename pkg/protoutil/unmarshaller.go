@@ -599,16 +599,16 @@ func GetKind(field protoreflect.FieldDescriptor) Kind {
 	if field.IsMap() {
 		return MapKind
 	}
-	switch field.Message().FullName() {
-	case "google.protobuf.Struct":
-		{
-			return StructKind
-		}
-	default:
-		{
-			return Kind(field.Kind())
+	message := field.Message()
+	if message != nil {
+		switch message.FullName() {
+		case "google.protobuf.Struct":
+			{
+				return StructKind
+			}
 		}
 	}
+	return Kind(field.Kind())
 }
 
 func GetFieldName(field protoreflect.FieldDescriptor) string {
