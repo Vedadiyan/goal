@@ -1,6 +1,7 @@
 package protoutil
 
 import (
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -430,7 +431,11 @@ func Bytes(data map[string]any, field protoreflect.FieldDescriptor, reflect prot
 	}
 	bytes, ok := value.([]byte)
 	if !ok {
-		return fmt.Errorf("expected []byte but found %T", value)
+		_bytes, err := json.Marshal(value)
+		if err != nil {
+			return err
+		}
+		bytes = _bytes
 	}
 	reflect.Set(field, protoreflect.ValueOf(bytes))
 	return nil
@@ -453,7 +458,11 @@ func BytesList(data map[string]any, field protoreflect.FieldDescriptor, reflect 
 	for _, item := range list {
 		bytes, ok := item.([]byte)
 		if !ok {
-			return fmt.Errorf("expected []byte but found %T", value)
+			_bytes, err := json.Marshal(value)
+			if err != nil {
+				return err
+			}
+			bytes = _bytes
 		}
 		v.Append(protoreflect.ValueOf(bytes))
 	}
