@@ -259,13 +259,15 @@ func MarshalMessage(data map[string]any, field FieldDescriptorKind, reflect Prot
 
 func MarshalMessageMap(data map[string]any, field FieldDescriptorKind, reflect ProtobufType) (_error error) {
 	defer Protect(&_error)
+	f := field.(protoreflect.FieldDescriptor)
 	value := reflect.Get(field).Map()
 	mapper := make(map[string]any)
 	var err error
 	value.Range(func(mk protoreflect.MapKey, v protoreflect.Value) bool {
-		err = _marshallers[GetKind(v)](mapper, protoreflect.MapKey(protoreflect.ValueOf(mk)), MapType{Map: value})
+		err = _marshallers[GetKind(f.MapValue())](mapper, mk, MapType{Map: value})
 		return err == nil
 	})
+	data[GetFieldName(field)] = mapper
 	if err != nil {
 		return err
 	}
