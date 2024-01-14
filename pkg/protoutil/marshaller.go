@@ -277,7 +277,7 @@ func MarshalMessageMap(data map[string]any, field FieldDescriptorKind, reflect P
 func MarshalMessageList(data map[string]any, field FieldDescriptorKind, reflect ProtobufType) (error error) {
 	defer Protect(&error)
 	value := reflect.Get(field).List()
-	slice := make([]map[string]any, value.Len())
+	slice := make([]any, value.Len())
 	for i := 0; i < value.Len(); i++ {
 		value, err := Marshal(value.Get(i).Message().Interface())
 		if err != nil {
