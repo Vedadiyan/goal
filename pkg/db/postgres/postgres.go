@@ -32,7 +32,7 @@ func getPgxSql(sql string, arguments map[string]any) (string, []any) {
 	index := 0
 	_arguments := make([]any, 0)
 	for key, value := range arguments {
-		if strings.Contains(_sql, fmt.Sprintf("\"%s\"", key)) {
+		if strings.Contains(_sql, fmt.Sprintf("\"$%s\"", key)) {
 			_sql = strings.ReplaceAll(_sql, fmt.Sprintf("\"%s\"", key), fmt.Sprintf("$%d", index+1))
 			_arguments = append(_arguments, value)
 			index++

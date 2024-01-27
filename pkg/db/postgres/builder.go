@@ -10,6 +10,12 @@ import (
 	"github.com/vedadiyan/goal/pkg/db/postgres/sanitize"
 )
 
+type (
+	TemplateData struct {
+		Root map[string]any
+	}
+)
+
 var (
 	templates map[string]*template.Template
 	rwmux     sync.RWMutex
@@ -21,34 +27,38 @@ func init() {
 
 func Build(str string, args map[string]any) (string, error) {
 	var (
-		template *template.Template
-		err      error
+		_template *template.Template
+		err       error
 	)
 	hash, err := templateHash(str)
 	rwmux.RLock()
-	template, ok := templates[hash]
+	_template, ok := templates[hash]
 	rwmux.RUnlock()
 	if !ok {
-		template, err = template.New(hash).Parse(str)
-		if err != nil {
-			return "", err
-		}
-		template.Funcs(map[string]any{
+		_template = template.New(hash)
+		_template.Funcs(map[string]any{
 			"Sanitize": func(value any) string {
 				val, _err := sanitize.SanitizeSQL("$1", standardize(value))
 				err = _err
 				return val
 			},
 		})
+		_template, err := _template.Parse(str)
+		if err != nil {
+			return "", err
+		}
 		rwmux.Lock()
-		templates[hash] = template
+		templates[hash] = _template
 		rwmux.Unlock()
 	}
 	if err != nil {
 		return "", err
 	}
+	data := TemplateData{
+		Root: args,
+	}
 	buffer := bytes.NewBufferString("")
-	err = template.Execute(buffer, args)
+	err = _template.Execute(buffer, data)
 	if err != nil {
 		return "", err
 	}
@@ -69,11 +79,35 @@ func standardize(value any) any {
 	switch value := value.(type) {
 	case int:
 		{
-			return int32(value)
+			return int64(value)
+		}
+	case int32:
+		{
+			return int64(value)
+		}
+	case int16:
+		{
+			return int64(value)
+		}
+	case int8:
+		{
+			return int64(value)
 		}
 	case uint:
 		{
-			return uint32(value)
+			return uint64(value)
+		}
+	case uint32:
+		{
+			return uint64(value)
+		}
+	case uint16:
+		{
+			return uint64(value)
+		}
+	case uint8:
+		{
+			return uint64(value)
 		}
 	default:
 		{
