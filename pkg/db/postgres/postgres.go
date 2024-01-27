@@ -27,29 +27,28 @@ type Pool struct {
 	cancelFunc context.CancelFunc
 }
 
-func getPgxSql(sql string, arguments map[string]any) (string, []any) {
+func getPgxSql(sql string, arguments map[string]any) (string, error) {
 	_sql := sql
-	index := 0
-	_arguments := make([]any, 0)
 	for key, value := range arguments {
 		if strings.Contains(_sql, fmt.Sprintf("\"$%s\"", key)) {
-			_sql = strings.ReplaceAll(_sql, fmt.Sprintf("\"%s\"", key), fmt.Sprintf("$%d", index+1))
-			_arguments = append(_arguments, value)
-			index++
+			v, err := sanitize.SanitizeSQL("$1", standardize(value))
+			if err != nil {
+				return "", err
+			}
+			_sql = strings.ReplaceAll(_sql, fmt.Sprintf("\"$%s\"", key), v)
 		}
 	}
-	return _sql, _arguments
+	return _sql, nil
 }
 
 func (pool *Pool) Exec(ctx context.Context, sql string, arguments map[string]any) (pgconn.CommandTag, error) {
 	str := sql
 	if arguments != nil {
-		_sql, _arguments := getPgxSql(sql, arguments)
-		_str, err := sanitize.SanitizeSQL(_sql, _arguments...)
+		_sql, err := getPgxSql(sql, arguments)
 		if err != nil {
 			return pgconn.CommandTag{}, err
 		}
-		str = _str
+		str = _sql
 	}
 	return pool.pool.Exec(ctx, str)
 }
@@ -61,12 +60,11 @@ func (pool *Pool) BeginTx(ctx context.Context, txOptions pgx.TxOptions) (pgx.Tx,
 func (pool *Pool) Query(ctx context.Context, sql string, arguments map[string]any) ([]map[string]any, error) {
 	str := sql
 	if arguments != nil {
-		_sql, _arguments := getPgxSql(sql, arguments)
-		_str, err := sanitize.SanitizeSQL(_sql, _arguments...)
+		_sql, err := getPgxSql(sql, arguments)
 		if err != nil {
 			return nil, err
 		}
-		str = _str
+		str = _sql
 	}
 	res, err := pool.pool.Query(ctx, str)
 	if err != nil {

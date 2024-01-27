@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
+	"strings"
 	"sync"
 	"text/template"
 
@@ -41,6 +43,19 @@ func Build(str string, args map[string]any) (string, error) {
 				val, _err := sanitize.SanitizeSQL("$1", standardize(value))
 				err = _err
 				return val
+			},
+			"DateRange": func(from string, to string) string {
+				_from, _err := sanitize.SanitizeSQL("$1", standardize(from))
+				if err != nil {
+					err = _err
+					return ""
+				}
+				_to, _err := sanitize.SanitizeSQL("$1", standardize(to))
+				if err != nil {
+					err = _err
+					return ""
+				}
+				return fmt.Sprintf("'[%s, %s]'::daterange", strings.ReplaceAll(_from, "'", ""), strings.ReplaceAll(_to, "'", ""))
 			},
 		})
 		_template, err := _template.Parse(str)
