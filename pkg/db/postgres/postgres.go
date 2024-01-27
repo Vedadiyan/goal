@@ -17,6 +17,8 @@ type Type int
 const (
 	COMMAND Type = iota
 	QUERY
+	COMMAND_TEMPLATE
+	QUERY_TEMPLATE
 )
 
 type Pool struct {
@@ -25,25 +27,28 @@ type Pool struct {
 	cancelFunc context.CancelFunc
 }
 
-func getPgxSql(sql string, arguments map[string]any) (string, []any) {
+func getPgxSql(sql string, arguments map[string]any) (string, error) {
 	_sql := sql
-	index := 0
-	_arguments := make([]any, 0)
 	for key, value := range arguments {
-		if strings.Contains(_sql, fmt.Sprintf("\"%s\"", key)) {
-			_sql = strings.ReplaceAll(_sql, fmt.Sprintf("\"%s\"", key), fmt.Sprintf("$%d", index+1))
-			_arguments = append(_arguments, value)
-			index++
+		if strings.Contains(_sql, fmt.Sprintf("\"$%s\"", key)) {
+			v, err := sanitize.SanitizeSQL("$1", standardize(value))
+			if err != nil {
+				return "", err
+			}
+			_sql = strings.ReplaceAll(_sql, fmt.Sprintf("\"$%s\"", key), v)
 		}
 	}
-	return _sql, _arguments
+	return _sql, nil
 }
 
 func (pool *Pool) Exec(ctx context.Context, sql string, arguments map[string]any) (pgconn.CommandTag, error) {
-	_sql, _arguments := getPgxSql(sql, arguments)
-	str, err := sanitize.SanitizeSQL(_sql, _arguments...)
-	if err != nil {
-		return pgconn.CommandTag{}, err
+	str := sql
+	if arguments != nil {
+		_sql, err := getPgxSql(sql, arguments)
+		if err != nil {
+			return pgconn.CommandTag{}, err
+		}
+		str = _sql
 	}
 	return pool.pool.Exec(ctx, str)
 }
@@ -53,8 +58,15 @@ func (pool *Pool) BeginTx(ctx context.Context, txOptions pgx.TxOptions) (pgx.Tx,
 }
 
 func (pool *Pool) Query(ctx context.Context, sql string, arguments map[string]any) ([]map[string]any, error) {
-	_sql, _arguments := getPgxSql(sql, arguments)
-	res, err := pool.pool.Query(ctx, _sql, _arguments...)
+	str := sql
+	if arguments != nil {
+		_sql, err := getPgxSql(sql, arguments)
+		if err != nil {
+			return nil, err
+		}
+		str = _sql
+	}
+	res, err := pool.pool.Query(ctx, str)
 	if err != nil {
 		return nil, err
 	}
@@ -118,6 +130,34 @@ func Handle(dsn string, _type Type, sql string, arguments map[string]any) ([]map
 	case QUERY:
 		{
 			res, err := pool.Query(context.TODO(), sql, arguments)
+			if err != nil {
+				return nil, err
+			}
+			return res, nil
+		}
+	case COMMAND_TEMPLATE:
+		{
+			cmd, err := Build(sql, arguments)
+			if err != nil {
+				return nil, err
+			}
+			res, err := pool.Exec(context.TODO(), cmd, nil)
+			if err != nil {
+				return nil, err
+			}
+			return []map[string]any{
+				{
+					"rows_affected": res.RowsAffected(),
+				},
+			}, nil
+		}
+	case QUERY_TEMPLATE:
+		{
+			cmd, err := Build(sql, arguments)
+			if err != nil {
+				return nil, err
+			}
+			res, err := pool.Query(context.TODO(), cmd, make(map[string]any))
 			if err != nil {
 				return nil, err
 			}
