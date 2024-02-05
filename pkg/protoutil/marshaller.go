@@ -66,7 +66,7 @@ func MarshalDoubleList(data map[string]any, field FieldDescriptorKind, reflect P
 	value := reflect.Get(field).List()
 	slice := make([]float64, value.Len())
 	for i := 0; i < value.Len(); i++ {
-		slice = append(slice, value.Get(i).Float())
+		slice[i] = value.Get(i).Float()
 	}
 	data[GetFieldName(field)] = slice
 	return nil
@@ -84,7 +84,7 @@ func MarshalFloatList(data map[string]any, field FieldDescriptorKind, reflect Pr
 	value := reflect.Get(field).List()
 	slice := make([]float32, value.Len())
 	for i := 0; i < value.Len(); i++ {
-		slice = append(slice, float32(value.Get(i).Float()))
+		slice[i] = float32(value.Get(i).Float())
 	}
 	data[GetFieldName(field)] = slice
 	return nil
@@ -102,7 +102,7 @@ func MarshalInt64List(data map[string]any, field FieldDescriptorKind, reflect Pr
 	value := reflect.Get(field).List()
 	slice := make([]int64, value.Len())
 	for i := 0; i < value.Len(); i++ {
-		slice = append(slice, value.Get(i).Int())
+		slice[i] = value.Get(i).Int()
 	}
 	data[GetFieldName(field)] = slice
 	return nil
@@ -120,7 +120,7 @@ func MarshalUInt64List(data map[string]any, field FieldDescriptorKind, reflect P
 	value := reflect.Get(field).List()
 	slice := make([]uint64, value.Len())
 	for i := 0; i < value.Len(); i++ {
-		slice = append(slice, value.Get(i).Uint())
+		slice[i] = value.Get(i).Uint()
 	}
 	data[GetFieldName(field)] = slice
 	return nil
@@ -138,7 +138,7 @@ func MarshalInt32List(data map[string]any, field FieldDescriptorKind, reflect Pr
 	value := reflect.Get(field).List()
 	slice := make([]int32, value.Len())
 	for i := 0; i < value.Len(); i++ {
-		slice = append(slice, int32(value.Get(i).Int()))
+		slice[i] = int32(value.Get(i).Int())
 	}
 	data[GetFieldName(field)] = slice
 	return nil
@@ -156,7 +156,7 @@ func MarshalUInt32List(data map[string]any, field FieldDescriptorKind, reflect P
 	value := reflect.Get(field).List()
 	slice := make([]uint32, value.Len())
 	for i := 0; i < value.Len(); i++ {
-		slice = append(slice, uint32(value.Get(i).Int()))
+		slice[i] = uint32(value.Get(i).Int())
 	}
 	data[GetFieldName(field)] = slice
 	return nil
@@ -174,7 +174,7 @@ func MarshalBoolList(data map[string]any, field FieldDescriptorKind, reflect Pro
 	value := reflect.Get(field).List()
 	slice := make([]bool, value.Len())
 	for i := 0; i < value.Len(); i++ {
-		slice = append(slice, value.Get(i).Bool())
+		slice[i] = value.Get(i).Bool()
 	}
 	data[GetFieldName(field)] = slice
 	return nil
@@ -197,7 +197,7 @@ func MarshalEnumList(data map[string]any, field FieldDescriptorKind, reflect Pro
 	value := reflect.Get(field).List()
 	slice := make([]int, value.Len())
 	for i := 0; i < value.Len(); i++ {
-		slice = append(slice, int(value.Get(i).Enum()))
+		slice[i] = int(value.Get(i).Enum())
 	}
 	data[GetFieldName(field)] = slice
 	return nil
@@ -215,7 +215,7 @@ func MarshalBytesList(data map[string]any, field FieldDescriptorKind, reflect Pr
 	value := reflect.Get(field).List()
 	slice := make([][]byte, value.Len())
 	for i := 0; i < value.Len(); i++ {
-		slice = append(slice, value.Get(i).Bytes())
+		slice[i] = value.Get(i).Bytes()
 	}
 	data[GetFieldName(field)] = slice
 	return nil
@@ -233,7 +233,7 @@ func MarshalStringList(data map[string]any, field FieldDescriptorKind, reflect P
 	value := reflect.Get(field).List()
 	slice := make([]string, value.Len())
 	for i := 0; i < value.Len(); i++ {
-		slice = append(slice, value.Get(i).String())
+		slice[i] = value.Get(i).String()
 	}
 	data[GetFieldName(field)] = slice
 	return nil
@@ -283,7 +283,7 @@ func MarshalMessageList(data map[string]any, field FieldDescriptorKind, reflect 
 		if err != nil {
 			return err
 		}
-		slice = append(slice, value)
+		slice[i] = value
 	}
 	data[GetFieldName(field)] = slice
 	return nil
