@@ -667,7 +667,7 @@ func UnmarshalMessageList(data map[string]any, field FieldDescriptorKind, reflec
 		message := elem.Message().Interface()
 		err := Unmarshal(valueRaw, message)
 		if err != nil {
-			return nil
+			return err
 		}
 		v.Append(elem)
 	}
