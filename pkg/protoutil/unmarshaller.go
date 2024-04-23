@@ -184,7 +184,7 @@ func UnmarshalDoubleList(data map[string]any, field FieldDescriptorKind, reflect
 		}
 		v.Append(protoreflect.ValueOf(doubleValue))
 	}
-	reflect.Set(field, protoreflect.ValueOf(list))
+	reflect.Set(field, protoreflect.ValueOf(v))
 	return nil
 }
 
