@@ -17,6 +17,7 @@ type (
 		Get(FieldDescriptorKind) protoreflect.Value
 		Mutable(FieldDescriptorKind) protoreflect.Value
 		Set(FieldDescriptorKind, protoreflect.Value)
+		HasValue(f FieldDescriptorKind) bool
 	}
 	MapType struct {
 		Map protoreflect.Map
@@ -80,6 +81,9 @@ func (mapMessage MapType) Mutable(f FieldDescriptorKind) protoreflect.Value {
 func (mapMessage MapType) Set(f FieldDescriptorKind, v protoreflect.Value) {
 	mapMessage.Map.Set(f.(protoreflect.MapKey), v)
 }
+func (mapMessage MapType) HasValue(f FieldDescriptorKind) bool {
+	return mapMessage.Map.Has(f.(protoreflect.MapKey))
+}
 
 func (messageType MessageType) Get(f FieldDescriptorKind) protoreflect.Value {
 	return messageType.Message.Get(f.(protoreflect.FieldDescriptor))
@@ -89,6 +93,9 @@ func (messageType MessageType) Mutable(f FieldDescriptorKind) protoreflect.Value
 }
 func (messageType MessageType) Set(f FieldDescriptorKind, v protoreflect.Value) {
 	messageType.Message.Set(f.(protoreflect.FieldDescriptor), v)
+}
+func (messageType MessageType) HasValue(f FieldDescriptorKind) bool {
+	return messageType.Message.Has(f.(protoreflect.FieldDescriptor))
 }
 
 func init() {

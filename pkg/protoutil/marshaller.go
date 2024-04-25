@@ -57,6 +57,9 @@ func init() {
 func MarshalDouble(data map[string]any, field FieldDescriptorKind, reflect ProtobufType) (error error) {
 	defer Protect(&error)
 	value := reflect.Get(field)
+	if !reflect.HasValue(field) {
+		return nil
+	}
 	data[GetFieldName(field)] = value.Float()
 	return nil
 }
@@ -64,6 +67,9 @@ func MarshalDouble(data map[string]any, field FieldDescriptorKind, reflect Proto
 func MarshalDoubleList(data map[string]any, field FieldDescriptorKind, reflect ProtobufType) (error error) {
 	defer Protect(&error)
 	value := reflect.Get(field).List()
+	if !reflect.HasValue(field) {
+		return nil
+	}
 	slice := make([]float64, value.Len())
 	for i := 0; i < value.Len(); i++ {
 		slice[i] = value.Get(i).Float()
@@ -75,6 +81,9 @@ func MarshalDoubleList(data map[string]any, field FieldDescriptorKind, reflect P
 func MarshalFloat(data map[string]any, field FieldDescriptorKind, reflect ProtobufType) (error error) {
 	defer Protect(&error)
 	value := reflect.Get(field)
+	if !reflect.HasValue(field) {
+		return nil
+	}
 	data[GetFieldName(field)] = float32(value.Float())
 	return nil
 }
@@ -82,6 +91,9 @@ func MarshalFloat(data map[string]any, field FieldDescriptorKind, reflect Protob
 func MarshalFloatList(data map[string]any, field FieldDescriptorKind, reflect ProtobufType) (error error) {
 	defer Protect(&error)
 	value := reflect.Get(field).List()
+	if !reflect.HasValue(field) {
+		return nil
+	}
 	slice := make([]float32, value.Len())
 	for i := 0; i < value.Len(); i++ {
 		slice[i] = float32(value.Get(i).Float())
@@ -93,6 +105,9 @@ func MarshalFloatList(data map[string]any, field FieldDescriptorKind, reflect Pr
 func MarshalInt64(data map[string]any, field FieldDescriptorKind, reflect ProtobufType) (error error) {
 	defer Protect(&error)
 	value := reflect.Get(field)
+	if !reflect.HasValue(field) {
+		return nil
+	}
 	data[GetFieldName(field)] = value.Int()
 	return nil
 }
@@ -100,6 +115,9 @@ func MarshalInt64(data map[string]any, field FieldDescriptorKind, reflect Protob
 func MarshalInt64List(data map[string]any, field FieldDescriptorKind, reflect ProtobufType) (error error) {
 	defer Protect(&error)
 	value := reflect.Get(field).List()
+	if !reflect.HasValue(field) {
+		return nil
+	}
 	slice := make([]int64, value.Len())
 	for i := 0; i < value.Len(); i++ {
 		slice[i] = value.Get(i).Int()
@@ -111,6 +129,9 @@ func MarshalInt64List(data map[string]any, field FieldDescriptorKind, reflect Pr
 func MarshalUInt64(data map[string]any, field FieldDescriptorKind, reflect ProtobufType) (error error) {
 	defer Protect(&error)
 	value := reflect.Get(field)
+	if !reflect.HasValue(field) {
+		return nil
+	}
 	data[GetFieldName(field)] = value.Uint()
 	return nil
 }
@@ -118,6 +139,9 @@ func MarshalUInt64(data map[string]any, field FieldDescriptorKind, reflect Proto
 func MarshalUInt64List(data map[string]any, field FieldDescriptorKind, reflect ProtobufType) (error error) {
 	defer Protect(&error)
 	value := reflect.Get(field).List()
+	if !reflect.HasValue(field) {
+		return nil
+	}
 	slice := make([]uint64, value.Len())
 	for i := 0; i < value.Len(); i++ {
 		slice[i] = value.Get(i).Uint()
@@ -129,6 +153,9 @@ func MarshalUInt64List(data map[string]any, field FieldDescriptorKind, reflect P
 func MarshalInt32(data map[string]any, field FieldDescriptorKind, reflect ProtobufType) (error error) {
 	defer Protect(&error)
 	value := reflect.Get(field)
+	if !reflect.HasValue(field) {
+		return nil
+	}
 	data[GetFieldName(field)] = int32(value.Int())
 	return nil
 }
@@ -136,6 +163,9 @@ func MarshalInt32(data map[string]any, field FieldDescriptorKind, reflect Protob
 func MarshalInt32List(data map[string]any, field FieldDescriptorKind, reflect ProtobufType) (error error) {
 	defer Protect(&error)
 	value := reflect.Get(field).List()
+	if !reflect.HasValue(field) {
+		return nil
+	}
 	slice := make([]int32, value.Len())
 	for i := 0; i < value.Len(); i++ {
 		slice[i] = int32(value.Get(i).Int())
@@ -147,6 +177,9 @@ func MarshalInt32List(data map[string]any, field FieldDescriptorKind, reflect Pr
 func MarshalUInt32(data map[string]any, field FieldDescriptorKind, reflect ProtobufType) (error error) {
 	defer Protect(&error)
 	value := reflect.Get(field)
+	if !reflect.HasValue(field) {
+		return nil
+	}
 	data[GetFieldName(field)] = uint32(value.Uint())
 	return nil
 }
@@ -154,6 +187,9 @@ func MarshalUInt32(data map[string]any, field FieldDescriptorKind, reflect Proto
 func MarshalUInt32List(data map[string]any, field FieldDescriptorKind, reflect ProtobufType) (error error) {
 	defer Protect(&error)
 	value := reflect.Get(field).List()
+	if !reflect.HasValue(field) {
+		return nil
+	}
 	slice := make([]uint32, value.Len())
 	for i := 0; i < value.Len(); i++ {
 		slice[i] = uint32(value.Get(i).Int())
@@ -165,6 +201,9 @@ func MarshalUInt32List(data map[string]any, field FieldDescriptorKind, reflect P
 func MarshalBool(data map[string]any, field FieldDescriptorKind, reflect ProtobufType) (error error) {
 	defer Protect(&error)
 	value := reflect.Get(field)
+	if !reflect.HasValue(field) {
+		return nil
+	}
 	data[GetFieldName(field)] = value.Bool()
 	return nil
 }
@@ -172,6 +211,9 @@ func MarshalBool(data map[string]any, field FieldDescriptorKind, reflect Protobu
 func MarshalBoolList(data map[string]any, field FieldDescriptorKind, reflect ProtobufType) (error error) {
 	defer Protect(&error)
 	value := reflect.Get(field).List()
+	if !reflect.HasValue(field) {
+		return nil
+	}
 	slice := make([]bool, value.Len())
 	for i := 0; i < value.Len(); i++ {
 		slice[i] = value.Get(i).Bool()
@@ -187,6 +229,9 @@ func MarshalGroup(data map[string]any, field FieldDescriptorKind, reflect Protob
 func MarshalEnum(data map[string]any, field FieldDescriptorKind, reflect ProtobufType) (error error) {
 	defer Protect(&error)
 	value := reflect.Get(field)
+	if !reflect.HasValue(field) {
+		return nil
+	}
 	data[GetFieldName(field)] = value.Enum()
 	return nil
 
@@ -195,6 +240,9 @@ func MarshalEnum(data map[string]any, field FieldDescriptorKind, reflect Protobu
 func MarshalEnumList(data map[string]any, field FieldDescriptorKind, reflect ProtobufType) (error error) {
 	defer Protect(&error)
 	value := reflect.Get(field).List()
+	if !reflect.HasValue(field) {
+		return nil
+	}
 	slice := make([]int, value.Len())
 	for i := 0; i < value.Len(); i++ {
 		slice[i] = int(value.Get(i).Enum())
@@ -206,6 +254,9 @@ func MarshalEnumList(data map[string]any, field FieldDescriptorKind, reflect Pro
 func MarshalBytes(data map[string]any, field FieldDescriptorKind, reflect ProtobufType) (error error) {
 	defer Protect(&error)
 	value := reflect.Get(field)
+	if !reflect.HasValue(field) {
+		return nil
+	}
 	data[GetFieldName(field)] = value.Bytes()
 	return nil
 }
@@ -213,6 +264,9 @@ func MarshalBytes(data map[string]any, field FieldDescriptorKind, reflect Protob
 func MarshalBytesList(data map[string]any, field FieldDescriptorKind, reflect ProtobufType) (error error) {
 	defer Protect(&error)
 	value := reflect.Get(field).List()
+	if !reflect.HasValue(field) {
+		return nil
+	}
 	slice := make([][]byte, value.Len())
 	for i := 0; i < value.Len(); i++ {
 		slice[i] = value.Get(i).Bytes()
@@ -224,6 +278,9 @@ func MarshalBytesList(data map[string]any, field FieldDescriptorKind, reflect Pr
 func MarshalString(data map[string]any, field FieldDescriptorKind, reflect ProtobufType) (error error) {
 	defer Protect(&error)
 	value := reflect.Get(field)
+	if !reflect.HasValue(field) {
+		return nil
+	}
 	data[GetFieldName(field)] = value.String()
 	return nil
 }
@@ -231,6 +288,9 @@ func MarshalString(data map[string]any, field FieldDescriptorKind, reflect Proto
 func MarshalStringList(data map[string]any, field FieldDescriptorKind, reflect ProtobufType) (error error) {
 	defer Protect(&error)
 	value := reflect.Get(field).List()
+	if !reflect.HasValue(field) {
+		return nil
+	}
 	slice := make([]string, value.Len())
 	for i := 0; i < value.Len(); i++ {
 		slice[i] = value.Get(i).String()
@@ -242,6 +302,9 @@ func MarshalStringList(data map[string]any, field FieldDescriptorKind, reflect P
 func MarshalStruct(data map[string]any, field FieldDescriptorKind, reflect ProtobufType) (error error) {
 	defer Protect(&error)
 	value := any(reflect.Get(field).Message().Interface()).(*structpb.Struct)
+	if !reflect.HasValue(field) {
+		return nil
+	}
 	data[GetFieldName(field)] = value.AsMap()
 	return nil
 }
@@ -249,6 +312,9 @@ func MarshalStruct(data map[string]any, field FieldDescriptorKind, reflect Proto
 func MarshalMessage(data map[string]any, field FieldDescriptorKind, reflect ProtobufType) (error error) {
 	defer Protect(&error)
 	value := reflect.Get(field)
+	if !reflect.HasValue(field) {
+		return nil
+	}
 	message, err := Marshal(value.Message().Interface())
 	if err != nil {
 		return err
@@ -261,6 +327,9 @@ func MarshalMessageMap(data map[string]any, field FieldDescriptorKind, reflect P
 	defer Protect(&_error)
 	f := field.(protoreflect.FieldDescriptor)
 	value := reflect.Get(field).Map()
+	if !reflect.HasValue(field) {
+		return nil
+	}
 	mapper := make(map[string]any)
 	var err error
 	value.Range(func(mk protoreflect.MapKey, v protoreflect.Value) bool {
@@ -277,6 +346,9 @@ func MarshalMessageMap(data map[string]any, field FieldDescriptorKind, reflect P
 func MarshalMessageList(data map[string]any, field FieldDescriptorKind, reflect ProtobufType) (error error) {
 	defer Protect(&error)
 	value := reflect.Get(field).List()
+	if !reflect.HasValue(field) {
+		return nil
+	}
 	slice := make([]any, value.Len())
 	for i := 0; i < value.Len(); i++ {
 		value, err := Marshal(value.Get(i).Message().Interface())
