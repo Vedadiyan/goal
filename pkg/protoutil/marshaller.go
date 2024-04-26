@@ -349,9 +349,15 @@ func MarshalMessageList(data map[string]any, field FieldDescriptorKind, reflect 
 	if !reflect.HasValue(field) {
 		return nil
 	}
+	nilValue := protoreflect.ValueOf(value.NewElement().Message().Type().Zero())
 	slice := make([]any, value.Len())
 	for i := 0; i < value.Len(); i++ {
-		value, err := Marshal(value.Get(i).Message().Interface())
+		item := value.Get(i)
+		if item.Equal(nilValue) {
+			slice[i] = nil
+			continue
+		}
+		value, err := Marshal(item.Message().Interface())
 		if err != nil {
 			return err
 		}
