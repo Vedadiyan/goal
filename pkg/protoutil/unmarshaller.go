@@ -667,7 +667,7 @@ func UnmarshalMessageList(data map[string]any, field FieldDescriptorKind, reflec
 	v := reflect.Mutable(field).List()
 	for _, item := range list {
 		if item == nil {
-			v.Append(reflect.Get(field).List().NewElement())
+			v.Append(protoreflect.ValueOf(reflect.Get(field).List().NewElement().Message().Type().Zero()))
 			continue
 		}
 		valueRaw, ok := item.(map[string]any)
