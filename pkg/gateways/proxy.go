@@ -3,7 +3,6 @@ package gateways
 import (
 	"encoding/json"
 	"fmt"
-	"strconv"
 	"strings"
 	"sync"
 
@@ -40,11 +39,11 @@ func GetJSONReq[T proto.Message](c *fiber.Ctx, req T, useMeta bool) error {
 	if useMeta {
 		meta := make(map[string]any)
 		meta["remote_ip"] = c.Context().RemoteIP()
-		userId, err := strconv.ParseInt(c.Get("sec-user-id"), 10, 64)
-		if err != nil {
-			return err
-		}
-		meta["user_id"] = userId
+		// userId, err := strconv.ParseInt(c.Get("sec-user-id"), 10, 64)
+		// if err != nil {
+		// 	return err
+		// }
+		// meta["user_id"] = userId
 		values["meta"] = meta
 	}
 	out, err := json.Marshal(values)
