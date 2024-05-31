@@ -99,8 +99,8 @@ func init() {
 	_unmarshallers[int(reflect.Uint64)] = UnmarshalUInt64
 	_unmarshallers[int(reflect.Int32)] = UnmarshalInt32
 	_unmarshallers[int(reflect.Uint32)] = UnmarshalUInt32
-	_unmarshallers[int(reflect.Int)] = UnmarshalInt32
-	_unmarshallers[int(reflect.Uint)] = UnmarshalUInt32
+	_unmarshallers[int(reflect.Int)] = UnmarshalInt
+	_unmarshallers[int(reflect.Uint)] = UnmarshalUInt
 	_unmarshallers[int(reflect.Bool)] = UnmarshalBool
 	_unmarshallers[int(reflect.String)] = UnmarshalString
 	_unmarshallers[int(reflect.Struct)] = UnmarshalMessage
@@ -112,8 +112,8 @@ func init() {
 	_unmarshallers[int(reflect.Uint64)*100] = UnmarshalUInt64List
 	_unmarshallers[int(reflect.Int32)*100] = UnmarshalInt32List
 	_unmarshallers[int(reflect.Uint32)*100] = UnmarshalUInt32List
-	_unmarshallers[int(reflect.Int)*100] = UnmarshalInt32List
-	_unmarshallers[int(reflect.Uint)*100] = UnmarshalUInt32List
+	_unmarshallers[int(reflect.Int)*100] = UnmarshalIntList
+	_unmarshallers[int(reflect.Uint)*100] = UnmarshalUIntList
 	_unmarshallers[int(reflect.Bool)*100] = UnmarshalBoolList
 	_unmarshallers[int(reflect.String)*100] = UnmarshalStringList
 	_unmarshallers[int(reflect.Struct)*100] = UnmarshalMessageList
@@ -320,7 +320,7 @@ func UnmarshalInt32(d map[string]any, f reflect.StructField, v reflect.Value) (e
 	if err != nil {
 		return err
 	}
-	v.Set(reflect.ValueOf(int32Value))
+	v.Set(reflect.ValueOf(int32(int32Value)))
 	return nil
 }
 
@@ -350,6 +350,50 @@ func UnmarshalInt32List(d map[string]any, f reflect.StructField, v reflect.Value
 	return nil
 }
 
+func UnmarshalInt(d map[string]any, f reflect.StructField, v reflect.Value) (error error) {
+	defer Protect(&error)
+	value, ok := d[GetFieldName(f)]
+	if !ok {
+		return nil
+	}
+	if value == nil {
+		return nil
+	}
+	valueRaw := fmt.Sprintf("%v", value)
+	int32Value, err := strconv.ParseInt(valueRaw, 10, 32)
+	if err != nil {
+		return err
+	}
+	v.Set(reflect.ValueOf(int(int32Value)))
+	return nil
+}
+
+func UnmarshalIntList(d map[string]any, f reflect.StructField, v reflect.Value) (error error) {
+	defer Protect(&error)
+	value, ok := d[GetFieldName(f)]
+	if !ok {
+		return nil
+	}
+	if value == nil {
+		return nil
+	}
+	list, ok := value.([]any)
+	if !ok {
+		return fmt.Errorf("expected list by found %T", value)
+	}
+	slice := make([]int, 0)
+	for _, item := range list {
+		valueRaw := fmt.Sprintf("%v", item)
+		int32Value, err := strconv.ParseInt(valueRaw, 10, 32)
+		if err != nil {
+			return err
+		}
+		slice = append(slice, int(int32Value))
+	}
+	v.Set(reflect.ValueOf(slice))
+	return nil
+}
+
 func UnmarshalUInt32(d map[string]any, f reflect.StructField, v reflect.Value) (error error) {
 	defer Protect(&error)
 	value, ok := d[GetFieldName(f)]
@@ -364,7 +408,7 @@ func UnmarshalUInt32(d map[string]any, f reflect.StructField, v reflect.Value) (
 	if err != nil {
 		return err
 	}
-	v.Set(reflect.ValueOf(uInt32Value))
+	v.Set(reflect.ValueOf(uint32(uInt32Value)))
 	return nil
 }
 
@@ -389,6 +433,50 @@ func UnmarshalUInt32List(d map[string]any, f reflect.StructField, v reflect.Valu
 			return err
 		}
 		slice = append(slice, uint32(uInt32Value))
+	}
+	v.Set(reflect.ValueOf(slice))
+	return nil
+}
+
+func UnmarshalUInt(d map[string]any, f reflect.StructField, v reflect.Value) (error error) {
+	defer Protect(&error)
+	value, ok := d[GetFieldName(f)]
+	if !ok {
+		return nil
+	}
+	if value == nil {
+		return nil
+	}
+	valueRaw := fmt.Sprintf("%v", value)
+	uInt32Value, err := strconv.ParseUint(valueRaw, 10, 32)
+	if err != nil {
+		return err
+	}
+	v.Set(reflect.ValueOf(uint(uInt32Value)))
+	return nil
+}
+
+func UnmarshalUIntList(d map[string]any, f reflect.StructField, v reflect.Value) (error error) {
+	defer Protect(&error)
+	value, ok := d[GetFieldName(f)]
+	if !ok {
+		return nil
+	}
+	if value == nil {
+		return nil
+	}
+	list, ok := value.([]any)
+	if !ok {
+		return fmt.Errorf("expected list by found %T", value)
+	}
+	slice := make([]uint, 0)
+	for _, item := range list {
+		valueRaw := fmt.Sprintf("%v", item)
+		uInt32Value, err := strconv.ParseUint(valueRaw, 10, 32)
+		if err != nil {
+			return err
+		}
+		slice = append(slice, uint(uInt32Value))
 	}
 	v.Set(reflect.ValueOf(slice))
 	return nil
@@ -614,8 +702,8 @@ func GetFieldName(field reflect.StructField) string {
 }
 
 func Unmarshal(data map[string]any, message any) error {
-	p := reflect.TypeOf(message)
-	v := reflect.ValueOf(message)
+	p := reflect.TypeOf(message).Elem()
+	v := reflect.ValueOf(message).Elem()
 	n := p.NumField()
 	for i := 0; i < n; i++ {
 		field := p.Field(i)
