@@ -8,7 +8,6 @@ import (
 	_ "unsafe"
 
 	"google.golang.org/protobuf/reflect/protoreflect"
-	"google.golang.org/protobuf/types/known/structpb"
 )
 
 type (
@@ -93,47 +92,33 @@ func (messageType MessageType) Set(f FieldDescriptorKind, v protoreflect.Value) 
 }
 
 func init() {
-	_unmarshallers = make(map[Kind]func(data map[string]any, field FieldDescriptorKind, reflect ProtobufType) error)
-	_unmarshallers[DoubleKind] = UnmarshalDouble
-	_unmarshallers[FloatKind] = UnmarshalFloat
-	_unmarshallers[Int64Kind] = UnmarshalInt64
-	_unmarshallers[Uint64Kind] = UnmarshalUInt64
-	_unmarshallers[Int32Kind] = UnmarshalInt32
-	_unmarshallers[Fixed64Kind] = UnmarshalUInt64
-	_unmarshallers[Fixed32Kind] = UnmarshalUInt32
-	_unmarshallers[BoolKind] = UnmarshalBool
-	_unmarshallers[StringKind] = UnmarshalString
-	_unmarshallers[GroupKind] = UnmarshalGroup
-	_unmarshallers[MessageKind] = UnmarshalMessage
-	_unmarshallers[BytesKind] = UnmarshalBytes
-	_unmarshallers[Uint32Kind] = UnmarshalUInt32
-	_unmarshallers[EnumKind] = UnmarshalEnum
-	_unmarshallers[Sfixed32Kind] = UnmarshalInt32
-	_unmarshallers[Sint32Kind] = UnmarshalInt32
-	_unmarshallers[Sfixed64Kind] = UnmarshalInt64
-	_unmarshallers[Sint64Kind] = UnmarshalInt64
+	_unmarshallers = make(map[int]func(data map[string]any, field reflect.StructField, reflect reflect.Value) error)
+	_unmarshallers[int(reflect.Float64)] = UnmarshalDouble
+	_unmarshallers[int(reflect.Float32)] = UnmarshalFloat
+	_unmarshallers[int(reflect.Int64)] = UnmarshalInt64
+	_unmarshallers[int(reflect.Uint64)] = UnmarshalUInt64
+	_unmarshallers[int(reflect.Int32)] = UnmarshalInt32
+	_unmarshallers[int(reflect.Uint32)] = UnmarshalUInt32
+	_unmarshallers[int(reflect.Int)] = UnmarshalInt32
+	_unmarshallers[int(reflect.Uint)] = UnmarshalUInt32
+	_unmarshallers[int(reflect.Bool)] = UnmarshalBool
+	_unmarshallers[int(reflect.String)] = UnmarshalString
+	_unmarshallers[int(reflect.Struct)] = UnmarshalMessage
+	_unmarshallers[int(reflect.Int8)] = UnmarshalByte
 
-	_unmarshallers[ListOfDoubleKind] = UnmarshalDoubleList
-	_unmarshallers[ListOfFloatKind] = UnmarshalFloatList
-	_unmarshallers[ListOfInt64Kind] = UnmarshalInt64List
-	_unmarshallers[ListOfUint64Kind] = UnmarshalUInt64List
-	_unmarshallers[ListOfInt32Kind] = UnmarshalInt32List
-	_unmarshallers[ListOfFixed64Kind] = UnmarshalUInt64List
-	_unmarshallers[ListOfFixed32Kind] = UnmarshalUInt32List
-	_unmarshallers[ListOfBoolKind] = UnmarshalBoolList
-	_unmarshallers[ListOfStringKind] = UnmarshalStringList
-	_unmarshallers[ListOfGroupKind] = UnmarshalGroup
-	_unmarshallers[ListOfMessageKind] = UnmarshalMessageList
-	_unmarshallers[ListOfBytesKind] = UnmarshalBytesList
-	_unmarshallers[ListOfUint32Kind] = UnmarshalUInt32List
-	_unmarshallers[ListOfEnumKind] = UnmarshalEnumList
-	_unmarshallers[ListOfSfixed32Kind] = UnmarshalInt32List
-	_unmarshallers[ListOfSint32Kind] = UnmarshalInt32List
-	_unmarshallers[ListOfSfixed64Kind] = UnmarshalInt64List
-	_unmarshallers[ListOfSint64Kind] = UnmarshalInt64List
-	_unmarshallers[MapKind] = UnmarshalMessageMap
-
-	_unmarshallers[StructKind] = UnmarshalStruct
+	_unmarshallers[int(reflect.Float64)*100] = UnmarshalDoubleList
+	_unmarshallers[int(reflect.Float32)*100] = UnmarshalFloatList
+	_unmarshallers[int(reflect.Int64)*100] = UnmarshalInt64List
+	_unmarshallers[int(reflect.Uint64)*100] = UnmarshalUInt64List
+	_unmarshallers[int(reflect.Int32)*100] = UnmarshalInt32List
+	_unmarshallers[int(reflect.Uint32)*100] = UnmarshalUInt32List
+	_unmarshallers[int(reflect.Int)*100] = UnmarshalInt32List
+	_unmarshallers[int(reflect.Uint)*100] = UnmarshalUInt32List
+	_unmarshallers[int(reflect.Bool)*100] = UnmarshalBoolList
+	_unmarshallers[int(reflect.String)*100] = UnmarshalStringList
+	_unmarshallers[int(reflect.Struct)*100] = UnmarshalMessageList
+	_unmarshallers[int(reflect.Int8)*100] = UnmarshalByteList
+	_unmarshallers[int(reflect.Map)] = UnmarshalMessageMap
 }
 
 func Protect(err *error) {
@@ -379,13 +364,13 @@ func UnmarshalUInt32(d map[string]any, f reflect.StructField, v reflect.Value) (
 	if err != nil {
 		return err
 	}
-	v.Set(f, protoreflect.ValueOf(uint32(uInt32Value)))
+	v.Set(reflect.ValueOf(uInt32Value))
 	return nil
 }
 
-func UnmarshalUInt32List(data map[string]any, field FieldDescriptorKind, reflect ProtobufType) (error error) {
+func UnmarshalUInt32List(d map[string]any, f reflect.StructField, v reflect.Value) (error error) {
 	defer Protect(&error)
-	value, ok := data[GetFieldName(field)]
+	value, ok := d[GetFieldName(f)]
 	if !ok {
 		return nil
 	}
@@ -396,22 +381,22 @@ func UnmarshalUInt32List(data map[string]any, field FieldDescriptorKind, reflect
 	if !ok {
 		return fmt.Errorf("expected list by found %T", value)
 	}
-	v := reflect.Mutable(field).List()
+	slice := make([]uint32, 0)
 	for _, item := range list {
 		valueRaw := fmt.Sprintf("%v", item)
 		uInt32Value, err := strconv.ParseUint(valueRaw, 10, 32)
 		if err != nil {
 			return err
 		}
-		v.Append(protoreflect.ValueOf(uint32(uInt32Value)))
+		slice = append(slice, uint32(uInt32Value))
 	}
-	reflect.Set(field, protoreflect.ValueOf(v))
+	v.Set(reflect.ValueOf(slice))
 	return nil
 }
 
-func UnmarshalBool(data map[string]any, field FieldDescriptorKind, reflect ProtobufType) (error error) {
+func UnmarshalBool(d map[string]any, f reflect.StructField, v reflect.Value) (error error) {
 	defer Protect(&error)
-	value, ok := data[GetFieldName(field)]
+	value, ok := d[GetFieldName(f)]
 	if !ok {
 		return nil
 	}
@@ -419,13 +404,13 @@ func UnmarshalBool(data map[string]any, field FieldDescriptorKind, reflect Proto
 		return nil
 	}
 	valueRaw := fmt.Sprintf("%v", value)
-	reflect.Set(field, protoreflect.ValueOf(strings.ToLower(valueRaw) == "true"))
+	v.Set(reflect.ValueOf(strings.ToLower(valueRaw) == "true"))
 	return nil
 }
 
-func UnmarshalBoolList(data map[string]any, field FieldDescriptorKind, reflect ProtobufType) (error error) {
+func UnmarshalBoolList(d map[string]any, f reflect.StructField, v reflect.Value) (error error) {
 	defer Protect(&error)
-	value, ok := data[GetFieldName(field)]
+	value, ok := d[GetFieldName(f)]
 	if !ok {
 		return nil
 	}
@@ -436,89 +421,35 @@ func UnmarshalBoolList(data map[string]any, field FieldDescriptorKind, reflect P
 	if !ok {
 		return fmt.Errorf("expected list by found %T", value)
 	}
-	v := reflect.Mutable(field).List()
+	slice := make([]bool, 0)
 	for _, item := range list {
 		valueRaw := fmt.Sprintf("%v", item)
-		v.Append(protoreflect.ValueOf(strings.ToLower(valueRaw) == "true"))
+		slice = append(slice, strings.ToLower(valueRaw) == "true")
 	}
-	reflect.Set(field, protoreflect.ValueOf(v))
+	v.Set(reflect.ValueOf(slice))
 	return nil
 }
 
-func UnmarshalGroup(data map[string]any, field FieldDescriptorKind, reflect ProtobufType) (error error) {
-	panic("not implemented")
-}
-
-func UnmarshalEnum(data map[string]any, field FieldDescriptorKind, reflect ProtobufType) (error error) {
+func UnmarshalByte(d map[string]any, f reflect.StructField, v reflect.Value) (error error) {
 	defer Protect(&error)
-	value, ok := data[GetFieldName(field)]
+	value, ok := d[GetFieldName(f)]
 	if !ok {
 		return nil
 	}
 	if value == nil {
 		return nil
 	}
-	str, ok := value.(string)
-	if !ok {
-		return fmt.Errorf("expected string by found %T", value)
-	}
-	enum := field.(protoreflect.FieldDescriptor).Enum().Values().ByName(protoreflect.Name(str))
-	if enum == nil {
-		return nil
-	}
-	reflect.Set(field, protoreflect.ValueOf(enum.Number()))
-	return nil
-}
-
-func UnmarshalEnumList(data map[string]any, field FieldDescriptorKind, reflect ProtobufType) (error error) {
-	defer Protect(&error)
-	value, ok := data[GetFieldName(field)]
-	if !ok {
-		return nil
-	}
-	if value == nil {
-		return nil
-	}
-	list, ok := value.([]any)
-	if !ok {
-		return fmt.Errorf("expected list by found %T", value)
-	}
-	v := reflect.Mutable(field).List()
-	for _, item := range list {
-		str, ok := item.(string)
-		if !ok {
-			return fmt.Errorf("expected string by found %T", value)
-		}
-		enum := field.(protoreflect.FieldDescriptor).Enum().Values().ByName(protoreflect.Name(str))
-		if enum == nil {
-			return nil
-		}
-		v.Append(protoreflect.ValueOf(enum.Number()))
-	}
-	reflect.Set(field, protoreflect.ValueOf(v))
-	return nil
-}
-
-func UnmarshalBytes(data map[string]any, field FieldDescriptorKind, reflect ProtobufType) (error error) {
-	defer Protect(&error)
-	value, ok := data[GetFieldName(field)]
-	if !ok {
-		return nil
-	}
-	if value == nil {
-		return nil
-	}
-	bytes, ok := value.([]byte)
+	byte, ok := value.(byte)
 	if !ok {
 		return fmt.Errorf("expected []byte but found %T", value)
 	}
-	reflect.Set(field, protoreflect.ValueOf(bytes))
+	v.Set(reflect.ValueOf(byte))
 	return nil
 }
 
-func UnmarshalBytesList(data map[string]any, field FieldDescriptorKind, reflect ProtobufType) (error error) {
+func UnmarshalByteList(d map[string]any, f reflect.StructField, v reflect.Value) (error error) {
 	defer Protect(&error)
-	value, ok := data[GetFieldName(field)]
+	value, ok := d[GetFieldName(f)]
 	if !ok {
 		return nil
 	}
@@ -529,21 +460,21 @@ func UnmarshalBytesList(data map[string]any, field FieldDescriptorKind, reflect 
 	if !ok {
 		return fmt.Errorf("expected list by found %T", value)
 	}
-	v := reflect.Mutable(field).List()
+	slice := make([]byte, 0)
 	for _, item := range list {
-		bytes, ok := item.([]byte)
+		bytes, ok := item.(byte)
 		if !ok {
 			return fmt.Errorf("expected []byte but found %T", value)
 		}
-		v.Append(protoreflect.ValueOf(bytes))
+		slice = append(slice, bytes)
 	}
-	reflect.Set(field, protoreflect.ValueOf(v))
+	v.Set(reflect.ValueOf(slice))
 	return nil
 }
 
-func UnmarshalString(data map[string]any, field FieldDescriptorKind, reflect ProtobufType) (error error) {
+func UnmarshalString(d map[string]any, f reflect.StructField, v reflect.Value) (error error) {
 	defer Protect(&error)
-	value, ok := data[GetFieldName(field)]
+	value, ok := d[GetFieldName(f)]
 	if !ok {
 		return nil
 	}
@@ -551,13 +482,13 @@ func UnmarshalString(data map[string]any, field FieldDescriptorKind, reflect Pro
 		return nil
 	}
 	valueRaw := fmt.Sprintf("%v", value)
-	reflect.Set(field, protoreflect.ValueOf(valueRaw))
+	v.Set(reflect.ValueOf(valueRaw))
 	return nil
 }
 
-func UnmarshalStringList(data map[string]any, field FieldDescriptorKind, reflect ProtobufType) (error error) {
+func UnmarshalStringList(d map[string]any, f reflect.StructField, v reflect.Value) (error error) {
 	defer Protect(&error)
-	value, ok := data[GetFieldName(field)]
+	value, ok := d[GetFieldName(f)]
 	if !ok {
 		return nil
 	}
@@ -568,28 +499,18 @@ func UnmarshalStringList(data map[string]any, field FieldDescriptorKind, reflect
 	if !ok {
 		return fmt.Errorf("expected list by found %T", value)
 	}
-	v := reflect.Mutable(field).List()
+	slice := make([]string, 0)
 	for _, item := range list {
 		valueRaw := fmt.Sprintf("%v", item)
-		v.Append(protoreflect.ValueOf(valueRaw))
+		slice = append(slice, valueRaw)
 	}
-	reflect.Set(field, protoreflect.ValueOf(v))
+	v.Set(reflect.ValueOf(slice))
 	return nil
 }
 
-func UnmarshalStruct(data map[string]any, field FieldDescriptorKind, reflect ProtobufType) (error error) {
+func UnmarshalMessage(d map[string]any, f reflect.StructField, v reflect.Value) (error error) {
 	defer Protect(&error)
-	value, err := structpb.NewStruct(data[GetFieldName(field)].(map[string]any))
-	if err != nil {
-		return nil
-	}
-	reflect.Set(field, protoreflect.ValueOfMessage(value.ProtoReflect()))
-	return nil
-}
-
-func UnmarshalMessage(data map[string]any, field FieldDescriptorKind, reflect ProtobufType) (error error) {
-	defer Protect(&error)
-	value, ok := data[GetFieldName(field)]
+	value, ok := d[GetFieldName(f)]
 	if !ok {
 		return nil
 	}
@@ -600,13 +521,13 @@ func UnmarshalMessage(data map[string]any, field FieldDescriptorKind, reflect Pr
 	if !ok {
 		return fmt.Errorf("expected object by found %T", value)
 	}
-	message := reflect.Mutable(field).Message().Interface()
+	message := reflect.New(f.Type)
 	return Unmarshal(valueRaw, message)
 }
 
-func UnmarshalMessageMap(data map[string]any, field FieldDescriptorKind, reflect ProtobufType) (error error) {
+func UnmarshalMessageMap(d map[string]any, f reflect.StructField, v reflect.Value) (error error) {
 	defer Protect(&error)
-	value, ok := data[GetFieldName(field)]
+	value, ok := d[GetFieldName(f)]
 	if !ok {
 		return nil
 	}
@@ -617,37 +538,38 @@ func UnmarshalMessageMap(data map[string]any, field FieldDescriptorKind, reflect
 	if !ok {
 		return fmt.Errorf("expected object by found %T", value)
 	}
-	message := reflect.Mutable(field).Map()
+	message := reflect.ValueOf(reflect.MapOf(nil, nil))
 	for key, value := range valueRaw {
-		field := field.(protoreflect.FieldDescriptor)
-		kind := GetKind(field.MapValue())
-		switch kind {
-		case MessageKind:
-			{
-				val := message.NewValue()
-				inst := val.Message().Interface()
-				err := Unmarshal(value.(map[string]any), inst)
-				if err != nil {
-					return err
-				}
-				message.Set(protoreflect.MapKey(protoreflect.ValueOf(key)), val)
-			}
-		default:
-			{
-				err := _unmarshallers[GetKind(field.MapValue())](valueRaw, protoreflect.MapKey(protoreflect.ValueOf(key)), MapType{Map: message})
-				if err != nil {
-					return err
-				}
-			}
-		}
+		_ = key
+		_ = value
+		// kind := GetKind(field.MapValue())
+		// switch kind {
+		// case MessageKind:
+		// 	{
+		// 		val := message.NewValue()
+		// 		inst := val.Message().Interface()
+		// 		err := Unmarshal(value.(map[string]any), inst)
+		// 		if err != nil {
+		// 			return err
+		// 		}
+		// 		message.Set(protoreflect.MapKey(protoreflect.ValueOf(key)), val)
+		// 	}
+		// default:
+		// 	{
+		// 		err := _unmarshallers[GetKind(field.MapValue())](valueRaw, protoreflect.MapKey(protoreflect.ValueOf(key)), MapType{Map: message})
+		// 		if err != nil {
+		// 			return err
+		// 		}
+		// 	}
+		// }
 	}
-	reflect.Set(field, protoreflect.ValueOf(message))
+	v.Set(reflect.ValueOf(message))
 	return nil
 }
 
-func UnmarshalMessageList(data map[string]any, field FieldDescriptorKind, reflect ProtobufType) (error error) {
+func UnmarshalMessageList(d map[string]any, f reflect.StructField, v reflect.Value) (error error) {
 	defer Protect(&error)
-	value, ok := data[GetFieldName(field)]
+	value, ok := d[GetFieldName(f)]
 	if !ok {
 		return nil
 	}
@@ -658,21 +580,20 @@ func UnmarshalMessageList(data map[string]any, field FieldDescriptorKind, reflec
 	if !ok {
 		return fmt.Errorf("expected list by found %T", value)
 	}
-	v := reflect.Mutable(field).List()
+	slice := reflect.ValueOf(reflect.SliceOf(f.Type))
 	for _, item := range list {
 		valueRaw, ok := item.(map[string]any)
 		if !ok {
 			return fmt.Errorf("expected object by found %T", value)
 		}
-		elem := reflect.Get(field).List().NewElement()
-		message := elem.Message().Interface()
+		message := reflect.New(f.Type)
 		err := Unmarshal(valueRaw, message)
 		if err != nil {
 			return err
 		}
-		v.Append(elem)
+		slice.Set(reflect.Append(slice, message))
 	}
-	reflect.Set(field, protoreflect.ValueOf(v))
+	v.Set(reflect.ValueOf(slice))
 	return nil
 }
 
