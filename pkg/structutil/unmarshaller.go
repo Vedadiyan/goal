@@ -6,90 +6,11 @@ import (
 	"strconv"
 	"strings"
 	_ "unsafe"
-
-	"google.golang.org/protobuf/reflect/protoreflect"
-)
-
-type (
-	Kind                int
-	FieldDescriptorKind any
-	ProtobufType        interface {
-		Get(FieldDescriptorKind) protoreflect.Value
-		Mutable(FieldDescriptorKind) protoreflect.Value
-		Set(FieldDescriptorKind, protoreflect.Value)
-	}
-	MapType struct {
-		Map protoreflect.Map
-	}
-	MessageType struct {
-		Message protoreflect.Message
-	}
-)
-
-const (
-	DoubleKind         Kind = 1
-	FloatKind          Kind = 2
-	Int64Kind          Kind = 3
-	Uint64Kind         Kind = 4
-	Int32Kind          Kind = 5
-	Fixed64Kind        Kind = 6
-	Fixed32Kind        Kind = 7
-	BoolKind           Kind = 8
-	StringKind         Kind = 9
-	GroupKind          Kind = 10
-	MessageKind        Kind = 11
-	BytesKind          Kind = 12
-	Uint32Kind         Kind = 13
-	EnumKind           Kind = 14
-	Sfixed32Kind       Kind = 15
-	Sint32Kind         Kind = 16
-	Sfixed64Kind       Kind = 17
-	Sint64Kind         Kind = 18
-	ListOfDoubleKind   Kind = 101
-	ListOfFloatKind    Kind = 102
-	ListOfInt64Kind    Kind = 103
-	ListOfUint64Kind   Kind = 104
-	ListOfInt32Kind    Kind = 105
-	ListOfFixed64Kind  Kind = 106
-	ListOfFixed32Kind  Kind = 107
-	ListOfBoolKind     Kind = 108
-	ListOfStringKind   Kind = 109
-	ListOfGroupKind    Kind = 110
-	ListOfMessageKind  Kind = 111
-	ListOfBytesKind    Kind = 112
-	ListOfUint32Kind   Kind = 113
-	ListOfEnumKind     Kind = 114
-	ListOfSfixed32Kind Kind = 115
-	ListOfSint32Kind   Kind = 116
-	ListOfSfixed64Kind Kind = 117
-	ListOfSint64Kind   Kind = 118
-	MapKind            Kind = 119
-	StructKind         Kind = 120
 )
 
 var (
 	_unmarshallers map[int]func(data map[string]any, field reflect.StructField, reflect reflect.Value) error
 )
-
-func (mapMessage MapType) Get(f FieldDescriptorKind) protoreflect.Value {
-	return mapMessage.Map.Get(f.(protoreflect.MapKey))
-}
-func (mapMessage MapType) Mutable(f FieldDescriptorKind) protoreflect.Value {
-	return mapMessage.Map.Mutable(f.(protoreflect.MapKey))
-}
-func (mapMessage MapType) Set(f FieldDescriptorKind, v protoreflect.Value) {
-	mapMessage.Map.Set(f.(protoreflect.MapKey), v)
-}
-
-func (messageType MessageType) Get(f FieldDescriptorKind) protoreflect.Value {
-	return messageType.Message.Get(f.(protoreflect.FieldDescriptor))
-}
-func (messageType MessageType) Mutable(f FieldDescriptorKind) protoreflect.Value {
-	return messageType.Message.Mutable(f.(protoreflect.FieldDescriptor))
-}
-func (messageType MessageType) Set(f FieldDescriptorKind, v protoreflect.Value) {
-	messageType.Message.Set(f.(protoreflect.FieldDescriptor), v)
-}
 
 func init() {
 	_unmarshallers = make(map[int]func(data map[string]any, field reflect.StructField, reflect reflect.Value) error)
