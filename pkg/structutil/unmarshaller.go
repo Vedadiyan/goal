@@ -119,6 +119,7 @@ func init() {
 	_unmarshallers[int(reflect.Struct)*100] = UnmarshalMessageList
 	_unmarshallers[int(reflect.Int8)*100] = UnmarshalByteList
 	_unmarshallers[int(reflect.Map)] = UnmarshalMessageMap
+	_unmarshallers[int(reflect.Slice)*100] = UnmarshalSlice
 }
 
 func Protect(err *error) {
@@ -610,7 +611,7 @@ func UnmarshalMessage(d map[string]any, f reflect.StructField, v reflect.Value) 
 		return fmt.Errorf("expected object by found %T", value)
 	}
 	message := reflect.New(f.Type)
-	return Unmarshal(valueRaw, message)
+	return Unmarshal(valueRaw, message.Interface())
 }
 
 func UnmarshalMessageMap(d map[string]any, f reflect.StructField, v reflect.Value) (error error) {
@@ -635,11 +636,11 @@ func UnmarshalMessageMap(d map[string]any, f reflect.StructField, v reflect.Valu
 		case int(reflect.Struct):
 			{
 				val := reflect.New(f.Type.Elem())
-				err := Unmarshal(value.(map[string]any), val)
+				err := Unmarshal(value.(map[string]any), val.Interface())
 				if err != nil {
 					return err
 				}
-				mapper.SetMapIndex(reflect.ValueOf(key), val)
+				mapper.SetMapIndex(reflect.ValueOf(key), val.Elem())
 
 			}
 		default:
@@ -672,13 +673,53 @@ func UnmarshalMessageList(d map[string]any, f reflect.StructField, v reflect.Val
 			return fmt.Errorf("expected object by found %T", value)
 		}
 		message := reflect.New(f.Type)
-		err := Unmarshal(valueRaw, message)
+		err := Unmarshal(valueRaw, message.Interface())
 		if err != nil {
 			return err
 		}
 		slice.Set(reflect.Append(slice, message))
 	}
 	v.Set(reflect.ValueOf(slice))
+	return nil
+}
+
+func UnmarshalSlice(d map[string]any, f reflect.StructField, v reflect.Value) (error error) {
+	defer Protect(&error)
+	value, ok := d[GetFieldName(f)]
+	if !ok {
+		return nil
+	}
+	if value == nil {
+		return nil
+	}
+	depth := 0
+	original := f.Type.Elem()
+	for original.Kind() == reflect.Slice {
+		original = original.Elem()
+		depth++
+	}
+	var recursiveFn func(in any, depth int) reflect.Value
+	recursiveFn = func(in any, d int) reflect.Value {
+		v1 := reflect.ValueOf(in)
+		if v1.Kind() != reflect.Slice {
+			return v1
+		}
+		sliceT := reflect.SliceOf(original)
+		for i := 0; i < depth-d; i++ {
+			sliceT = reflect.SliceOf(sliceT)
+		}
+		test := fmt.Sprintf("%v", sliceT)
+		_ = test
+		slice := reflect.MakeSlice(sliceT, 0, 0)
+		for i := 0; i < v1.Len(); i++ {
+			value := v1.Index(i).Interface()
+			next := recursiveFn(value, d+1).Interface()
+			slice = reflect.Append(slice, reflect.ValueOf(next))
+		}
+		return slice
+	}
+	tracker := recursiveFn(value, 0)
+	v.Set(tracker)
 	return nil
 }
 

@@ -13,8 +13,23 @@ type (
 		Text    string
 		Boolean bool
 	}
+	Array2D struct {
+		Number  [][]int
+		Text    string
+		Boolean bool
+	}
+	ArrayMultiD struct {
+		Number  [][][]int
+		Text    string
+		Boolean bool
+	}
 	SimpleMap struct {
 		Number  map[string]int
+		Text    string
+		Boolean bool
+	}
+	MapStruct struct {
+		Number  map[string]Simple
 		Text    string
 		Boolean bool
 	}
@@ -53,6 +68,51 @@ func TestSimpleMap(t *testing.T) {
 		"Boolean": true,
 	}
 	unmarshalled := new(SimpleMap)
+	err := Unmarshal(data, unmarshalled)
+	if err != nil {
+		t.FailNow()
+	}
+}
+
+func TestSimpleStruct(t *testing.T) {
+	data := map[string]any{
+		"Number": map[string]any{
+			"1": map[string]any{
+				"Number":  10,
+				"Text":    "Hello World",
+				"Boolean": true,
+			},
+		},
+		"Text":    "Hello World",
+		"Boolean": true,
+	}
+	unmarshalled := new(MapStruct)
+	err := Unmarshal(data, unmarshalled)
+	if err != nil {
+		t.FailNow()
+	}
+}
+
+func TestArray2D(t *testing.T) {
+	data := map[string]any{
+		"Number":  [][]any{{1, 2, 3}},
+		"Text":    "Hello World",
+		"Boolean": true,
+	}
+	unmarshalled := new(Array2D)
+	err := Unmarshal(data, unmarshalled)
+	if err != nil {
+		t.FailNow()
+	}
+}
+
+func TestArrayMultiD(t *testing.T) {
+	data := map[string]any{
+		"Number":  [][][]any{{{1, 2, 3}}},
+		"Text":    "Hello World",
+		"Boolean": true,
+	}
+	unmarshalled := new(ArrayMultiD)
 	err := Unmarshal(data, unmarshalled)
 	if err != nil {
 		t.FailNow()
