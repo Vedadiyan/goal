@@ -40,6 +40,7 @@ func init() {
 	_unmarshallers[int(reflect.Struct)*100] = UnmarshalMessageList
 	_unmarshallers[int(reflect.Int8)*100] = UnmarshalByteList
 	_unmarshallers[int(reflect.Map)] = UnmarshalMessageMap
+	_unmarshallers[int(reflect.Map)*100] = UnmarshalMessageMapList
 	_unmarshallers[int(reflect.Slice)*100] = UnmarshalSlice
 }
 
@@ -571,6 +572,49 @@ func UnmarshalMessageMap(d map[string]any, f reflect.StructField, v reflect.Valu
 		}
 	}
 	v.Set(mapper)
+	return nil
+}
+
+func UnmarshalMessageMapList(d map[string]any, f reflect.StructField, v reflect.Value) (error error) {
+	defer Protect(&error)
+	value, ok := d[GetFieldName(f)]
+	if !ok {
+		return nil
+	}
+	if value == nil {
+		return nil
+	}
+	valueRaw, ok := value.([]any)
+	if !ok {
+		return fmt.Errorf("expected object by found %T", value)
+	}
+	slice := reflect.MakeSlice(reflect.SliceOf(f.Type.Elem()), 0, 0)
+	for _, item := range valueRaw {
+		mapper := reflect.MakeMap(reflect.MapOf(f.Type.Elem().Key(), f.Type.Elem().Elem()))
+		for key, value := range item.(map[string]any) {
+
+			kind := GetKindRaw(f.Type.Elem().Kind())
+			switch kind {
+			case int(reflect.Struct):
+				{
+					val := reflect.New(f.Type.Elem())
+					err := Unmarshal(value.(map[string]any), val.Interface())
+					if err != nil {
+						return err
+					}
+					mapper.SetMapIndex(reflect.ValueOf(key), val.Elem())
+
+				}
+			default:
+				{
+					mapper.SetMapIndex(reflect.ValueOf(key), reflect.ValueOf(value))
+				}
+			}
+		}
+		slice = reflect.Append(slice, mapper)
+	}
+
+	v.Set(slice)
 	return nil
 }
 
