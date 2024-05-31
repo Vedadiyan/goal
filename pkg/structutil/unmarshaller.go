@@ -666,20 +666,20 @@ func UnmarshalMessageList(d map[string]any, f reflect.StructField, v reflect.Val
 	if !ok {
 		return fmt.Errorf("expected list by found %T", value)
 	}
-	slice := reflect.ValueOf(reflect.SliceOf(f.Type))
+	slice := reflect.MakeSlice(reflect.SliceOf(f.Type.Elem()), 0, 0)
 	for _, item := range list {
 		valueRaw, ok := item.(map[string]any)
 		if !ok {
 			return fmt.Errorf("expected object by found %T", value)
 		}
-		message := reflect.New(f.Type)
+		message := reflect.New(f.Type.Elem())
 		err := Unmarshal(valueRaw, message.Interface())
 		if err != nil {
 			return err
 		}
-		slice.Set(reflect.Append(slice, message))
+		slice = reflect.Append(slice, message.Elem())
 	}
-	v.Set(reflect.ValueOf(slice))
+	v.Set(slice)
 	return nil
 }
 

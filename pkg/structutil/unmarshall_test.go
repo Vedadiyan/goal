@@ -13,6 +13,11 @@ type (
 		Text    string
 		Boolean bool
 	}
+	ArrayStruct struct {
+		Number  []Simple
+		Text    string
+		Boolean bool
+	}
 	ArrayStructMulti struct {
 		Number  [][]Simple
 		Text    string
@@ -137,6 +142,25 @@ func TestArrayStructMulti(t *testing.T) {
 		"Boolean": true,
 	}
 	unmarshalled := new(ArrayStructMulti)
+	err := Unmarshal(data, unmarshalled)
+	if err != nil {
+		t.FailNow()
+	}
+}
+
+func TestArrayStruct(t *testing.T) {
+	data := map[string]any{
+		"Number": []any{
+			map[string]any{
+
+				"Number":  10,
+				"Text":    "Hello World",
+				"Boolean": true,
+			}},
+		"Text":    "Hello World",
+		"Boolean": true,
+	}
+	unmarshalled := new(ArrayStruct)
 	err := Unmarshal(data, unmarshalled)
 	if err != nil {
 		t.FailNow()
