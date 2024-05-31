@@ -701,6 +701,16 @@ func UnmarshalSlice(d map[string]any, f reflect.StructField, v reflect.Value) (e
 	var recursiveFn func(in any, depth int) reflect.Value
 	recursiveFn = func(in any, d int) reflect.Value {
 		v1 := reflect.ValueOf(in)
+		if v1.Kind() == reflect.Map {
+			v := reflect.New(original)
+			err := Unmarshal(in.(map[string]any), v.Interface())
+			if err != nil {
+
+			}
+			x := v.Interface()
+			_ = x
+			return v.Elem()
+		}
 		if v1.Kind() != reflect.Slice {
 			return v1
 		}

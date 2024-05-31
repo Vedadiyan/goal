@@ -13,6 +13,11 @@ type (
 		Text    string
 		Boolean bool
 	}
+	ArrayStructMulti struct {
+		Number  [][]Simple
+		Text    string
+		Boolean bool
+	}
 	Array2D struct {
 		Number  [][]int
 		Text    string
@@ -113,6 +118,25 @@ func TestArrayMultiD(t *testing.T) {
 		"Boolean": true,
 	}
 	unmarshalled := new(ArrayMultiD)
+	err := Unmarshal(data, unmarshalled)
+	if err != nil {
+		t.FailNow()
+	}
+}
+
+func TestArrayStructMulti(t *testing.T) {
+	data := map[string]any{
+		"Number": [][]map[string]any{{
+			{
+				"Number":  10,
+				"Text":    "Hello World",
+				"Boolean": true,
+			},
+		}},
+		"Text":    "Hello World",
+		"Boolean": true,
+	}
+	unmarshalled := new(ArrayStructMulti)
 	err := Unmarshal(data, unmarshalled)
 	if err != nil {
 		t.FailNow()
