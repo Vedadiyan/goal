@@ -13,6 +13,11 @@ type (
 		Text    string
 		Boolean bool
 	}
+	SimpleMap struct {
+		Number  map[string]int
+		Text    string
+		Boolean bool
+	}
 )
 
 func TestSimple(t *testing.T) {
@@ -35,6 +40,19 @@ func TestSimpleArray(t *testing.T) {
 		"Boolean": true,
 	}
 	unmarshalled := new(SimpleArray)
+	err := Unmarshal(data, unmarshalled)
+	if err != nil {
+		t.FailNow()
+	}
+}
+
+func TestSimpleMap(t *testing.T) {
+	data := map[string]any{
+		"Number":  map[string]any{"1": 1, "2": 2},
+		"Text":    "Hello World",
+		"Boolean": true,
+	}
+	unmarshalled := new(SimpleMap)
 	err := Unmarshal(data, unmarshalled)
 	if err != nil {
 		t.FailNow()

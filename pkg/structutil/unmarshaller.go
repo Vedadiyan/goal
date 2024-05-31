@@ -626,32 +626,29 @@ func UnmarshalMessageMap(d map[string]any, f reflect.StructField, v reflect.Valu
 	if !ok {
 		return fmt.Errorf("expected object by found %T", value)
 	}
-	message := reflect.ValueOf(reflect.MapOf(nil, nil))
+	message := reflect.MapOf(f.Type.Key(), f.Type.Elem())
+	mapper := reflect.MakeMap(message)
 	for key, value := range valueRaw {
-		_ = key
-		_ = value
-		// kind := GetKind(field.MapValue())
-		// switch kind {
-		// case MessageKind:
-		// 	{
-		// 		val := message.NewValue()
-		// 		inst := val.Message().Interface()
-		// 		err := Unmarshal(value.(map[string]any), inst)
-		// 		if err != nil {
-		// 			return err
-		// 		}
-		// 		message.Set(protoreflect.MapKey(protoreflect.ValueOf(key)), val)
-		// 	}
-		// default:
-		// 	{
-		// 		err := _unmarshallers[GetKind(field.MapValue())](valueRaw, protoreflect.MapKey(protoreflect.ValueOf(key)), MapType{Map: message})
-		// 		if err != nil {
-		// 			return err
-		// 		}
-		// 	}
-		// }
+
+		kind := GetKindRaw(f.Type.Elem().Kind())
+		switch kind {
+		case int(reflect.Struct):
+			{
+				val := reflect.New(f.Type.Elem())
+				err := Unmarshal(value.(map[string]any), val)
+				if err != nil {
+					return err
+				}
+				mapper.SetMapIndex(reflect.ValueOf(key), val)
+
+			}
+		default:
+			{
+				mapper.SetMapIndex(reflect.ValueOf(key), reflect.ValueOf(value))
+			}
+		}
 	}
-	v.Set(reflect.ValueOf(message))
+	v.Set(mapper)
 	return nil
 }
 
@@ -691,6 +688,13 @@ func GetKind(f reflect.StructField) int {
 		return int(field.Elem().Kind()) * 100
 	}
 	return int(field.Kind())
+}
+
+func GetKindRaw(f reflect.Kind) int {
+	if f == reflect.Slice {
+		return int(f) * 100
+	}
+	return int(f)
 }
 
 func GetFieldName(field reflect.StructField) string {
