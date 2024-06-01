@@ -19,13 +19,16 @@ func init() {
 	_unmarshallers[int(reflect.Int64)] = UnmarshalInt64
 	_unmarshallers[int(reflect.Uint64)] = UnmarshalUInt64
 	_unmarshallers[int(reflect.Int32)] = UnmarshalInt32
+	_unmarshallers[int(reflect.Uint16)] = UnmarshalUInt16
 	_unmarshallers[int(reflect.Uint32)] = UnmarshalUInt32
 	_unmarshallers[int(reflect.Int)] = UnmarshalInt
+	_unmarshallers[int(reflect.Int16)] = UnmarshalInt16
 	_unmarshallers[int(reflect.Uint)] = UnmarshalUInt
 	_unmarshallers[int(reflect.Bool)] = UnmarshalBool
 	_unmarshallers[int(reflect.String)] = UnmarshalString
 	_unmarshallers[int(reflect.Struct)] = UnmarshalMessage
-	_unmarshallers[int(reflect.Int8)] = UnmarshalByte
+	_unmarshallers[int(reflect.Int8)] = UnmarshalInt8
+	_unmarshallers[int(reflect.Uint8)] = UnmarshalUInt8
 
 	_unmarshallers[int(reflect.Float64)*100] = UnmarshalDoubleList
 	_unmarshallers[int(reflect.Float32)*100] = UnmarshalFloatList
@@ -203,6 +206,24 @@ func UnmarshalUInt64(d map[string]any, f reflect.StructField, v reflect.Value) (
 	return nil
 }
 
+func UnmarshalUInt16(d map[string]any, f reflect.StructField, v reflect.Value) (error error) {
+	defer Protect(&error)
+	value, ok := d[GetFieldName(f)]
+	if !ok {
+		return nil
+	}
+	if value == nil {
+		return nil
+	}
+	valueRaw := fmt.Sprintf("%v", value)
+	uInt16Value, err := strconv.ParseUint(valueRaw, 10, 16)
+	if err != nil {
+		return err
+	}
+	v.Set(reflect.ValueOf(uint16(uInt16Value)))
+	return nil
+}
+
 func UnmarshalUInt64List(d map[string]any, f reflect.StructField, v reflect.Value) (error error) {
 	defer Protect(&error)
 	value, ok := d[GetFieldName(f)]
@@ -288,6 +309,24 @@ func UnmarshalInt(d map[string]any, f reflect.StructField, v reflect.Value) (err
 		return err
 	}
 	v.Set(reflect.ValueOf(int(int32Value)))
+	return nil
+}
+
+func UnmarshalInt16(d map[string]any, f reflect.StructField, v reflect.Value) (error error) {
+	defer Protect(&error)
+	value, ok := d[GetFieldName(f)]
+	if !ok {
+		return nil
+	}
+	if value == nil {
+		return nil
+	}
+	valueRaw := fmt.Sprintf("%v", value)
+	int16Value, err := strconv.ParseInt(valueRaw, 10, 16)
+	if err != nil {
+		return err
+	}
+	v.Set(reflect.ValueOf(int16(int16Value)))
 	return nil
 }
 
@@ -441,7 +480,7 @@ func UnmarshalBoolList(d map[string]any, f reflect.StructField, v reflect.Value)
 	return nil
 }
 
-func UnmarshalByte(d map[string]any, f reflect.StructField, v reflect.Value) (error error) {
+func UnmarshalInt8(d map[string]any, f reflect.StructField, v reflect.Value) (error error) {
 	defer Protect(&error)
 	value, ok := d[GetFieldName(f)]
 	if !ok {
@@ -450,11 +489,30 @@ func UnmarshalByte(d map[string]any, f reflect.StructField, v reflect.Value) (er
 	if value == nil {
 		return nil
 	}
-	byte, ok := value.(byte)
-	if !ok {
-		return fmt.Errorf("expected []byte but found %T", value)
+	valueRaw := fmt.Sprintf("%v", value)
+	int8Value, err := strconv.ParseInt(valueRaw, 10, 8)
+	if err != nil {
+		return err
 	}
-	v.Set(reflect.ValueOf(byte))
+	v.Set(reflect.ValueOf(int8(int8Value)))
+	return nil
+}
+
+func UnmarshalUInt8(d map[string]any, f reflect.StructField, v reflect.Value) (error error) {
+	defer Protect(&error)
+	value, ok := d[GetFieldName(f)]
+	if !ok {
+		return nil
+	}
+	if value == nil {
+		return nil
+	}
+	valueRaw := fmt.Sprintf("%v", value)
+	int8Value, err := strconv.ParseUint(valueRaw, 10, 8)
+	if err != nil {
+		return err
+	}
+	v.Set(reflect.ValueOf(uint8(int8Value)))
 	return nil
 }
 

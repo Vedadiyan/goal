@@ -1,10 +1,28 @@
 package structutil
 
-import "testing"
+import (
+	"encoding/json"
+	"testing"
+)
 
 type (
 	Simple struct {
 		Number  int
+		Text    string
+		Boolean bool
+	}
+	SimpleAllTypes struct {
+		Int     int
+		Int32   int32
+		Int64   int64
+		Int16   int16
+		Int8    int8
+		Uint    uint
+		Uint32  uint32
+		Uint64  uint64
+		Uint16  uint16
+		Uint8   uint8
+		Byte    byte
 		Text    string
 		Boolean bool
 	}
@@ -58,6 +76,32 @@ func TestSimple(t *testing.T) {
 	}
 	unmarshalled := new(Simple)
 	err := Unmarshal(data, unmarshalled)
+	if err != nil {
+		t.FailNow()
+	}
+}
+
+func TestSimpleAllTypes(t *testing.T) {
+	simpleAllTypes := SimpleAllTypes{}
+	simpleAllTypes.Boolean = true
+	simpleAllTypes.Byte = 1
+	simpleAllTypes.Int = 2
+	simpleAllTypes.Int16 = 3
+	simpleAllTypes.Int32 = 4
+	simpleAllTypes.Int64 = 5
+	simpleAllTypes.Int8 = 6
+	simpleAllTypes.Text = "ok"
+	simpleAllTypes.Uint = 7
+	simpleAllTypes.Uint16 = 8
+	simpleAllTypes.Uint32 = 9
+	simpleAllTypes.Uint64 = 10
+	simpleAllTypes.Uint8 = 11
+	bytes, err := json.Marshal(&simpleAllTypes)
+	data := make(map[string]any)
+	err = json.Unmarshal(bytes, &data)
+
+	unmarshalled := new(SimpleAllTypes)
+	err = Unmarshal(data, unmarshalled)
 	if err != nil {
 		t.FailNow()
 	}
