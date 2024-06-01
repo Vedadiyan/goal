@@ -26,6 +26,21 @@ type (
 		Text    string
 		Boolean bool
 	}
+	SimpleAllArrayTypes struct {
+		Int     []int
+		Int32   []int32
+		Int64   []int64
+		Int16   []int16
+		Int8    []int8
+		Uint    []uint
+		Uint32  []uint32
+		Uint64  []uint64
+		Uint16  []uint16
+		Uint8   []uint8
+		Byte    []uint8
+		Text    []string
+		Boolean []bool
+	}
 	SimpleArray struct {
 		Number  []int
 		Text    string
@@ -101,6 +116,32 @@ func TestSimpleAllTypes(t *testing.T) {
 	err = json.Unmarshal(bytes, &data)
 
 	unmarshalled := new(SimpleAllTypes)
+	err = Unmarshal(data, unmarshalled)
+	if err != nil {
+		t.FailNow()
+	}
+}
+
+func TestSimpleAllArrayTypes(t *testing.T) {
+	simpleAllTypes := SimpleAllArrayTypes{}
+	simpleAllTypes.Boolean = []bool{true}
+
+	simpleAllTypes.Int = []int{2}
+	simpleAllTypes.Int16 = []int16{3}
+	simpleAllTypes.Int32 = []int32{4}
+	simpleAllTypes.Int64 = []int64{5}
+
+	simpleAllTypes.Text = []string{"ok"}
+	simpleAllTypes.Uint = []uint{7}
+	simpleAllTypes.Uint16 = []uint16{8}
+	simpleAllTypes.Uint32 = []uint32{9}
+	simpleAllTypes.Uint64 = []uint64{10}
+
+	bytes, err := json.Marshal(&simpleAllTypes)
+	data := make(map[string]any)
+	err = json.Unmarshal(bytes, &data)
+
+	unmarshalled := new(SimpleAllArrayTypes)
 	err = Unmarshal(data, unmarshalled)
 	if err != nil {
 		t.FailNow()

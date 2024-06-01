@@ -36,12 +36,15 @@ func init() {
 	_unmarshallers[int(reflect.Uint64)*100] = UnmarshalUInt64List
 	_unmarshallers[int(reflect.Int32)*100] = UnmarshalInt32List
 	_unmarshallers[int(reflect.Uint32)*100] = UnmarshalUInt32List
+	_unmarshallers[int(reflect.Int16)*100] = UnmarshalInt16List
+	_unmarshallers[int(reflect.Uint16)*100] = UnmarshalUInt16List
 	_unmarshallers[int(reflect.Int)*100] = UnmarshalIntList
 	_unmarshallers[int(reflect.Uint)*100] = UnmarshalUIntList
 	_unmarshallers[int(reflect.Bool)*100] = UnmarshalBoolList
 	_unmarshallers[int(reflect.String)*100] = UnmarshalStringList
 	_unmarshallers[int(reflect.Struct)*100] = UnmarshalMessageList
-	_unmarshallers[int(reflect.Int8)*100] = UnmarshalByteList
+	_unmarshallers[int(reflect.Int8)*100] = UnmarshalInt8List
+	_unmarshallers[int(reflect.Uint8)*100] = UnmarshalUInt8List
 	_unmarshallers[int(reflect.Map)] = UnmarshalMessageMap
 	_unmarshallers[int(reflect.Map)*100] = UnmarshalMessageMapList
 	_unmarshallers[int(reflect.Slice)*100] = UnmarshalSlice
@@ -400,6 +403,84 @@ func UnmarshalUInt32List(d map[string]any, f reflect.StructField, v reflect.Valu
 	return nil
 }
 
+func UnmarshalInt16List(d map[string]any, f reflect.StructField, v reflect.Value) (error error) {
+	defer Protect(&error)
+	value, ok := d[GetFieldName(f)]
+	if !ok {
+		return nil
+	}
+	if value == nil {
+		return nil
+	}
+	list, ok := value.([]any)
+	if !ok {
+		return fmt.Errorf("expected list by found %T", value)
+	}
+	slice := make([]int16, 0)
+	for _, item := range list {
+		valueRaw := fmt.Sprintf("%v", item)
+		uInt32Value, err := strconv.ParseInt(valueRaw, 10, 16)
+		if err != nil {
+			return err
+		}
+		slice = append(slice, int16(uInt32Value))
+	}
+	v.Set(reflect.ValueOf(slice))
+	return nil
+}
+
+func UnmarshalUInt16List(d map[string]any, f reflect.StructField, v reflect.Value) (error error) {
+	defer Protect(&error)
+	value, ok := d[GetFieldName(f)]
+	if !ok {
+		return nil
+	}
+	if value == nil {
+		return nil
+	}
+	list, ok := value.([]any)
+	if !ok {
+		return fmt.Errorf("expected list by found %T", value)
+	}
+	slice := make([]uint16, 0)
+	for _, item := range list {
+		valueRaw := fmt.Sprintf("%v", item)
+		uInt32Value, err := strconv.ParseUint(valueRaw, 10, 16)
+		if err != nil {
+			return err
+		}
+		slice = append(slice, uint16(uInt32Value))
+	}
+	v.Set(reflect.ValueOf(slice))
+	return nil
+}
+
+func UnmarshalUInt8List(d map[string]any, f reflect.StructField, v reflect.Value) (error error) {
+	defer Protect(&error)
+	value, ok := d[GetFieldName(f)]
+	if !ok {
+		return nil
+	}
+	if value == nil {
+		return nil
+	}
+	list, ok := value.([]any)
+	if !ok {
+		return fmt.Errorf("expected list by found %T", value)
+	}
+	slice := make([]uint8, 0)
+	for _, item := range list {
+		valueRaw := fmt.Sprintf("%v", item)
+		uInt32Value, err := strconv.ParseUint(valueRaw, 10, 8)
+		if err != nil {
+			return err
+		}
+		slice = append(slice, uint8(uInt32Value))
+	}
+	v.Set(reflect.ValueOf(slice))
+	return nil
+}
+
 func UnmarshalUInt(d map[string]any, f reflect.StructField, v reflect.Value) (error error) {
 	defer Protect(&error)
 	value, ok := d[GetFieldName(f)]
@@ -516,7 +597,7 @@ func UnmarshalUInt8(d map[string]any, f reflect.StructField, v reflect.Value) (e
 	return nil
 }
 
-func UnmarshalByteList(d map[string]any, f reflect.StructField, v reflect.Value) (error error) {
+func UnmarshalInt8List(d map[string]any, f reflect.StructField, v reflect.Value) (error error) {
 	defer Protect(&error)
 	value, ok := d[GetFieldName(f)]
 	if !ok {
@@ -529,13 +610,14 @@ func UnmarshalByteList(d map[string]any, f reflect.StructField, v reflect.Value)
 	if !ok {
 		return fmt.Errorf("expected list by found %T", value)
 	}
-	slice := make([]byte, 0)
+	slice := make([]int8, 0)
 	for _, item := range list {
-		bytes, ok := item.(byte)
-		if !ok {
-			return fmt.Errorf("expected []byte but found %T", value)
+		valueRaw := fmt.Sprintf("%v", item)
+		uInt32Value, err := strconv.ParseInt(valueRaw, 10, 8)
+		if err != nil {
+			return err
 		}
-		slice = append(slice, bytes)
+		slice = append(slice, int8(uInt32Value))
 	}
 	v.Set(reflect.ValueOf(slice))
 	return nil
