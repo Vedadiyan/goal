@@ -318,22 +318,25 @@ func UnmarshalInt(d map[string]any, f reflect.StructField, v reflect.Value, isPt
 	if err != nil {
 		return err
 	}
-	if isPtr != 0 {
+	SetPointer(int(int32Value), v, isPtr)
+	return nil
+}
+
+func SetPointer[T any](value T, r reflect.Value, pointer int) {
+	if pointer != 0 {
 		t := reflect.PointerTo(reflect.TypeOf(0))
 		v1 := reflect.New(t)
-		value := int(int32Value)
 		v1.Elem().Set(reflect.ValueOf(&value))
-		for i := 1; i < isPtr; i++ {
+		for i := 1; i < pointer; i++ {
 			t = reflect.PointerTo(t)
 			temp := reflect.New(t)
 			temp.Elem().Set(v1)
 			v1 = temp
 		}
-		v.Set(v1.Elem())
-		return nil
+		r.Set(v1.Elem())
+		return
 	}
-	v.Set(reflect.ValueOf(int(int32Value)))
-	return nil
+	r.Set(reflect.ValueOf(value))
 }
 
 func UnmarshalInt16(d map[string]any, f reflect.StructField, v reflect.Value, isPtr int) (error error) {
