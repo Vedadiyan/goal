@@ -9,11 +9,11 @@ import (
 )
 
 var (
-	_unmarshallers map[int]func(data map[string]any, field reflect.StructField, reflect reflect.Value) error
+	_unmarshallers map[int]func(data map[string]any, field reflect.StructField, reflect reflect.Value, isPtr int) error
 )
 
 func init() {
-	_unmarshallers = make(map[int]func(data map[string]any, field reflect.StructField, reflect reflect.Value) error)
+	_unmarshallers = make(map[int]func(data map[string]any, field reflect.StructField, reflect reflect.Value, isPtr int) error)
 	_unmarshallers[int(reflect.Float64)] = UnmarshalDouble
 	_unmarshallers[int(reflect.Float32)] = UnmarshalFloat
 	_unmarshallers[int(reflect.Int64)] = UnmarshalInt64
@@ -29,6 +29,7 @@ func init() {
 	_unmarshallers[int(reflect.Struct)] = UnmarshalMessage
 	_unmarshallers[int(reflect.Int8)] = UnmarshalInt8
 	_unmarshallers[int(reflect.Uint8)] = UnmarshalUInt8
+	_unmarshallers[int(reflect.Pointer)] = UnmarshalPointer
 
 	_unmarshallers[int(reflect.Float64)*100] = UnmarshalDoubleList
 	_unmarshallers[int(reflect.Float32)*100] = UnmarshalFloatList
@@ -59,7 +60,7 @@ func Protect(err *error) {
 	}
 }
 
-func UnmarshalDouble(d map[string]any, f reflect.StructField, v reflect.Value) (error error) {
+func UnmarshalDouble(d map[string]any, f reflect.StructField, v reflect.Value, isPtr int) (error error) {
 	defer Protect(&error)
 	value, ok := d[GetFieldName(f)]
 	if !ok {
@@ -77,7 +78,13 @@ func UnmarshalDouble(d map[string]any, f reflect.StructField, v reflect.Value) (
 	return nil
 }
 
-func UnmarshalDoubleList(d map[string]any, f reflect.StructField, v reflect.Value) (error error) {
+func UnmarshalPointer(d map[string]any, f reflect.StructField, v reflect.Value, isPtr int) (error error) {
+	defer Protect(&error)
+	f.Type = f.Type.Elem()
+	return _unmarshallers[GetKindRaw(f.Type.Kind())](d, f, v, isPtr+1)
+}
+
+func UnmarshalDoubleList(d map[string]any, f reflect.StructField, v reflect.Value, isPtr int) (error error) {
 	defer Protect(&error)
 	value, ok := d[GetFieldName(f)]
 	if !ok {
@@ -103,7 +110,7 @@ func UnmarshalDoubleList(d map[string]any, f reflect.StructField, v reflect.Valu
 	return nil
 }
 
-func UnmarshalFloat(d map[string]any, f reflect.StructField, v reflect.Value) (error error) {
+func UnmarshalFloat(d map[string]any, f reflect.StructField, v reflect.Value, isPtr int) (error error) {
 	defer Protect(&error)
 	value, ok := d[GetFieldName(f)]
 	if !ok {
@@ -121,7 +128,7 @@ func UnmarshalFloat(d map[string]any, f reflect.StructField, v reflect.Value) (e
 	return nil
 }
 
-func UnmarshalFloatList(d map[string]any, f reflect.StructField, v reflect.Value) (error error) {
+func UnmarshalFloatList(d map[string]any, f reflect.StructField, v reflect.Value, isPtr int) (error error) {
 	defer Protect(&error)
 	value, ok := d[GetFieldName(f)]
 	if !ok {
@@ -147,7 +154,7 @@ func UnmarshalFloatList(d map[string]any, f reflect.StructField, v reflect.Value
 	return nil
 }
 
-func UnmarshalInt64(d map[string]any, f reflect.StructField, v reflect.Value) (error error) {
+func UnmarshalInt64(d map[string]any, f reflect.StructField, v reflect.Value, isPtr int) (error error) {
 	defer Protect(&error)
 	value, ok := d[GetFieldName(f)]
 	if !ok {
@@ -165,7 +172,7 @@ func UnmarshalInt64(d map[string]any, f reflect.StructField, v reflect.Value) (e
 	return nil
 }
 
-func UnmarshalInt64List(d map[string]any, f reflect.StructField, v reflect.Value) (error error) {
+func UnmarshalInt64List(d map[string]any, f reflect.StructField, v reflect.Value, isPtr int) (error error) {
 	defer Protect(&error)
 	value, ok := d[GetFieldName(f)]
 	if !ok {
@@ -191,7 +198,7 @@ func UnmarshalInt64List(d map[string]any, f reflect.StructField, v reflect.Value
 	return nil
 }
 
-func UnmarshalUInt64(d map[string]any, f reflect.StructField, v reflect.Value) (error error) {
+func UnmarshalUInt64(d map[string]any, f reflect.StructField, v reflect.Value, isPtr int) (error error) {
 	defer Protect(&error)
 	value, ok := d[GetFieldName(f)]
 	if !ok {
@@ -209,7 +216,7 @@ func UnmarshalUInt64(d map[string]any, f reflect.StructField, v reflect.Value) (
 	return nil
 }
 
-func UnmarshalUInt16(d map[string]any, f reflect.StructField, v reflect.Value) (error error) {
+func UnmarshalUInt16(d map[string]any, f reflect.StructField, v reflect.Value, isPtr int) (error error) {
 	defer Protect(&error)
 	value, ok := d[GetFieldName(f)]
 	if !ok {
@@ -227,7 +234,7 @@ func UnmarshalUInt16(d map[string]any, f reflect.StructField, v reflect.Value) (
 	return nil
 }
 
-func UnmarshalUInt64List(d map[string]any, f reflect.StructField, v reflect.Value) (error error) {
+func UnmarshalUInt64List(d map[string]any, f reflect.StructField, v reflect.Value, isPtr int) (error error) {
 	defer Protect(&error)
 	value, ok := d[GetFieldName(f)]
 	if !ok {
@@ -253,7 +260,7 @@ func UnmarshalUInt64List(d map[string]any, f reflect.StructField, v reflect.Valu
 	return nil
 }
 
-func UnmarshalInt32(d map[string]any, f reflect.StructField, v reflect.Value) (error error) {
+func UnmarshalInt32(d map[string]any, f reflect.StructField, v reflect.Value, isPtr int) (error error) {
 	defer Protect(&error)
 	value, ok := d[GetFieldName(f)]
 	if !ok {
@@ -271,7 +278,7 @@ func UnmarshalInt32(d map[string]any, f reflect.StructField, v reflect.Value) (e
 	return nil
 }
 
-func UnmarshalInt32List(d map[string]any, f reflect.StructField, v reflect.Value) (error error) {
+func UnmarshalInt32List(d map[string]any, f reflect.StructField, v reflect.Value, isPtr int) (error error) {
 	defer Protect(&error)
 	value, ok := d[GetFieldName(f)]
 	if !ok {
@@ -297,7 +304,7 @@ func UnmarshalInt32List(d map[string]any, f reflect.StructField, v reflect.Value
 	return nil
 }
 
-func UnmarshalInt(d map[string]any, f reflect.StructField, v reflect.Value) (error error) {
+func UnmarshalInt(d map[string]any, f reflect.StructField, v reflect.Value, isPtr int) (error error) {
 	defer Protect(&error)
 	value, ok := d[GetFieldName(f)]
 	if !ok {
@@ -311,11 +318,25 @@ func UnmarshalInt(d map[string]any, f reflect.StructField, v reflect.Value) (err
 	if err != nil {
 		return err
 	}
+	if isPtr != 0 {
+		t := reflect.PointerTo(reflect.TypeOf(0))
+		v1 := reflect.New(t)
+		value := int(int32Value)
+		v1.Elem().Set(reflect.ValueOf(&value))
+		for i := 1; i < isPtr; i++ {
+			t = reflect.PointerTo(t)
+			temp := reflect.New(t)
+			temp.Elem().Set(v1)
+			v1 = temp
+		}
+		v.Set(v1.Elem())
+		return nil
+	}
 	v.Set(reflect.ValueOf(int(int32Value)))
 	return nil
 }
 
-func UnmarshalInt16(d map[string]any, f reflect.StructField, v reflect.Value) (error error) {
+func UnmarshalInt16(d map[string]any, f reflect.StructField, v reflect.Value, isPtr int) (error error) {
 	defer Protect(&error)
 	value, ok := d[GetFieldName(f)]
 	if !ok {
@@ -333,7 +354,7 @@ func UnmarshalInt16(d map[string]any, f reflect.StructField, v reflect.Value) (e
 	return nil
 }
 
-func UnmarshalIntList(d map[string]any, f reflect.StructField, v reflect.Value) (error error) {
+func UnmarshalIntList(d map[string]any, f reflect.StructField, v reflect.Value, isPtr int) (error error) {
 	defer Protect(&error)
 	value, ok := d[GetFieldName(f)]
 	if !ok {
@@ -359,7 +380,7 @@ func UnmarshalIntList(d map[string]any, f reflect.StructField, v reflect.Value) 
 	return nil
 }
 
-func UnmarshalUInt32(d map[string]any, f reflect.StructField, v reflect.Value) (error error) {
+func UnmarshalUInt32(d map[string]any, f reflect.StructField, v reflect.Value, isPtr int) (error error) {
 	defer Protect(&error)
 	value, ok := d[GetFieldName(f)]
 	if !ok {
@@ -377,7 +398,7 @@ func UnmarshalUInt32(d map[string]any, f reflect.StructField, v reflect.Value) (
 	return nil
 }
 
-func UnmarshalUInt32List(d map[string]any, f reflect.StructField, v reflect.Value) (error error) {
+func UnmarshalUInt32List(d map[string]any, f reflect.StructField, v reflect.Value, isPtr int) (error error) {
 	defer Protect(&error)
 	value, ok := d[GetFieldName(f)]
 	if !ok {
@@ -403,7 +424,7 @@ func UnmarshalUInt32List(d map[string]any, f reflect.StructField, v reflect.Valu
 	return nil
 }
 
-func UnmarshalInt16List(d map[string]any, f reflect.StructField, v reflect.Value) (error error) {
+func UnmarshalInt16List(d map[string]any, f reflect.StructField, v reflect.Value, isPtr int) (error error) {
 	defer Protect(&error)
 	value, ok := d[GetFieldName(f)]
 	if !ok {
@@ -429,7 +450,7 @@ func UnmarshalInt16List(d map[string]any, f reflect.StructField, v reflect.Value
 	return nil
 }
 
-func UnmarshalUInt16List(d map[string]any, f reflect.StructField, v reflect.Value) (error error) {
+func UnmarshalUInt16List(d map[string]any, f reflect.StructField, v reflect.Value, isPtr int) (error error) {
 	defer Protect(&error)
 	value, ok := d[GetFieldName(f)]
 	if !ok {
@@ -455,7 +476,7 @@ func UnmarshalUInt16List(d map[string]any, f reflect.StructField, v reflect.Valu
 	return nil
 }
 
-func UnmarshalUInt8List(d map[string]any, f reflect.StructField, v reflect.Value) (error error) {
+func UnmarshalUInt8List(d map[string]any, f reflect.StructField, v reflect.Value, isPtr int) (error error) {
 	defer Protect(&error)
 	value, ok := d[GetFieldName(f)]
 	if !ok {
@@ -481,7 +502,7 @@ func UnmarshalUInt8List(d map[string]any, f reflect.StructField, v reflect.Value
 	return nil
 }
 
-func UnmarshalUInt(d map[string]any, f reflect.StructField, v reflect.Value) (error error) {
+func UnmarshalUInt(d map[string]any, f reflect.StructField, v reflect.Value, isPtr int) (error error) {
 	defer Protect(&error)
 	value, ok := d[GetFieldName(f)]
 	if !ok {
@@ -499,7 +520,7 @@ func UnmarshalUInt(d map[string]any, f reflect.StructField, v reflect.Value) (er
 	return nil
 }
 
-func UnmarshalUIntList(d map[string]any, f reflect.StructField, v reflect.Value) (error error) {
+func UnmarshalUIntList(d map[string]any, f reflect.StructField, v reflect.Value, isPtr int) (error error) {
 	defer Protect(&error)
 	value, ok := d[GetFieldName(f)]
 	if !ok {
@@ -525,7 +546,7 @@ func UnmarshalUIntList(d map[string]any, f reflect.StructField, v reflect.Value)
 	return nil
 }
 
-func UnmarshalBool(d map[string]any, f reflect.StructField, v reflect.Value) (error error) {
+func UnmarshalBool(d map[string]any, f reflect.StructField, v reflect.Value, isPtr int) (error error) {
 	defer Protect(&error)
 	value, ok := d[GetFieldName(f)]
 	if !ok {
@@ -539,7 +560,7 @@ func UnmarshalBool(d map[string]any, f reflect.StructField, v reflect.Value) (er
 	return nil
 }
 
-func UnmarshalBoolList(d map[string]any, f reflect.StructField, v reflect.Value) (error error) {
+func UnmarshalBoolList(d map[string]any, f reflect.StructField, v reflect.Value, isPtr int) (error error) {
 	defer Protect(&error)
 	value, ok := d[GetFieldName(f)]
 	if !ok {
@@ -561,7 +582,7 @@ func UnmarshalBoolList(d map[string]any, f reflect.StructField, v reflect.Value)
 	return nil
 }
 
-func UnmarshalInt8(d map[string]any, f reflect.StructField, v reflect.Value) (error error) {
+func UnmarshalInt8(d map[string]any, f reflect.StructField, v reflect.Value, isPtr int) (error error) {
 	defer Protect(&error)
 	value, ok := d[GetFieldName(f)]
 	if !ok {
@@ -579,7 +600,7 @@ func UnmarshalInt8(d map[string]any, f reflect.StructField, v reflect.Value) (er
 	return nil
 }
 
-func UnmarshalUInt8(d map[string]any, f reflect.StructField, v reflect.Value) (error error) {
+func UnmarshalUInt8(d map[string]any, f reflect.StructField, v reflect.Value, isPtr int) (error error) {
 	defer Protect(&error)
 	value, ok := d[GetFieldName(f)]
 	if !ok {
@@ -597,7 +618,7 @@ func UnmarshalUInt8(d map[string]any, f reflect.StructField, v reflect.Value) (e
 	return nil
 }
 
-func UnmarshalInt8List(d map[string]any, f reflect.StructField, v reflect.Value) (error error) {
+func UnmarshalInt8List(d map[string]any, f reflect.StructField, v reflect.Value, isPtr int) (error error) {
 	defer Protect(&error)
 	value, ok := d[GetFieldName(f)]
 	if !ok {
@@ -623,7 +644,7 @@ func UnmarshalInt8List(d map[string]any, f reflect.StructField, v reflect.Value)
 	return nil
 }
 
-func UnmarshalString(d map[string]any, f reflect.StructField, v reflect.Value) (error error) {
+func UnmarshalString(d map[string]any, f reflect.StructField, v reflect.Value, isPtr int) (error error) {
 	defer Protect(&error)
 	value, ok := d[GetFieldName(f)]
 	if !ok {
@@ -637,7 +658,7 @@ func UnmarshalString(d map[string]any, f reflect.StructField, v reflect.Value) (
 	return nil
 }
 
-func UnmarshalStringList(d map[string]any, f reflect.StructField, v reflect.Value) (error error) {
+func UnmarshalStringList(d map[string]any, f reflect.StructField, v reflect.Value, isPtr int) (error error) {
 	defer Protect(&error)
 	value, ok := d[GetFieldName(f)]
 	if !ok {
@@ -659,7 +680,7 @@ func UnmarshalStringList(d map[string]any, f reflect.StructField, v reflect.Valu
 	return nil
 }
 
-func UnmarshalMessage(d map[string]any, f reflect.StructField, v reflect.Value) (error error) {
+func UnmarshalMessage(d map[string]any, f reflect.StructField, v reflect.Value, isPtr int) (error error) {
 	defer Protect(&error)
 	value, ok := d[GetFieldName(f)]
 	if !ok {
@@ -676,7 +697,7 @@ func UnmarshalMessage(d map[string]any, f reflect.StructField, v reflect.Value) 
 	return Unmarshal(valueRaw, message.Interface())
 }
 
-func UnmarshalMessageMap(d map[string]any, f reflect.StructField, v reflect.Value) (error error) {
+func UnmarshalMessageMap(d map[string]any, f reflect.StructField, v reflect.Value, isPtr int) (error error) {
 	defer Protect(&error)
 	value, ok := d[GetFieldName(f)]
 	if !ok {
@@ -715,7 +736,7 @@ func UnmarshalMessageMap(d map[string]any, f reflect.StructField, v reflect.Valu
 	return nil
 }
 
-func UnmarshalMessageMapList(d map[string]any, f reflect.StructField, v reflect.Value) (error error) {
+func UnmarshalMessageMapList(d map[string]any, f reflect.StructField, v reflect.Value, isPtr int) (error error) {
 	defer Protect(&error)
 	value, ok := d[GetFieldName(f)]
 	if !ok {
@@ -758,7 +779,7 @@ func UnmarshalMessageMapList(d map[string]any, f reflect.StructField, v reflect.
 	return nil
 }
 
-func UnmarshalMessageList(d map[string]any, f reflect.StructField, v reflect.Value) (error error) {
+func UnmarshalMessageList(d map[string]any, f reflect.StructField, v reflect.Value, isPtr int) (error error) {
 	defer Protect(&error)
 	value, ok := d[GetFieldName(f)]
 	if !ok {
@@ -788,7 +809,7 @@ func UnmarshalMessageList(d map[string]any, f reflect.StructField, v reflect.Val
 	return nil
 }
 
-func UnmarshalSlice(d map[string]any, f reflect.StructField, v reflect.Value) (error error) {
+func UnmarshalSlice(d map[string]any, f reflect.StructField, v reflect.Value, isPtr int) (error error) {
 	defer Protect(&error)
 	value, ok := d[GetFieldName(f)]
 	if !ok {
@@ -866,7 +887,7 @@ func Unmarshal(data map[string]any, message any) error {
 	for i := 0; i < n; i++ {
 		field := p.Field(i)
 		kind := GetKind(field)
-		err := _unmarshallers[kind](data, field, v.Field(i))
+		err := _unmarshallers[kind](data, field, v.Field(i), 0)
 		if err != nil {
 			return err
 		}

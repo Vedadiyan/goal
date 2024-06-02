@@ -11,6 +11,16 @@ type (
 		Text    string
 		Boolean bool
 	}
+	SimplePointer struct {
+		Number  *int
+		Text    string
+		Boolean bool
+	}
+	SimpleDoublePointer struct {
+		Number  **int
+		Text    string
+		Boolean bool
+	}
 	SimpleAllTypes struct {
 		Int     int
 		Int32   int32
@@ -95,6 +105,32 @@ func TestSimple(t *testing.T) {
 		"Boolean": true,
 	}
 	unmarshalled := new(Simple)
+	err := Unmarshal(data, unmarshalled)
+	if err != nil {
+		t.FailNow()
+	}
+}
+
+func TestSimplePointer(t *testing.T) {
+	data := map[string]any{
+		"Number":  10,
+		"Text":    "Hello World",
+		"Boolean": true,
+	}
+	unmarshalled := new(SimplePointer)
+	err := Unmarshal(data, unmarshalled)
+	if err != nil {
+		t.FailNow()
+	}
+}
+
+func TestSimpleDoublePointer(t *testing.T) {
+	data := map[string]any{
+		"Number":  10,
+		"Text":    "Hello World",
+		"Boolean": true,
+	}
+	unmarshalled := new(SimpleDoublePointer)
 	err := Unmarshal(data, unmarshalled)
 	if err != nil {
 		t.FailNow()
