@@ -808,12 +808,10 @@ func UnmarshalSlice(d map[string]any, f reflect.StructField, v reflect.Value) (e
 		v1 := reflect.ValueOf(in)
 		if v1.Kind() == reflect.Map {
 			v := reflect.New(original)
-			err := Unmarshal(in.(map[string]any), v.Interface())
-			if err != nil {
-
+			if original.Elem().Kind() == reflect.Interface {
+				return v1
 			}
-			x := v.Interface()
-			_ = x
+			_ = Unmarshal(in.(map[string]any), v.Interface())
 			return v.Elem()
 		}
 		if v1.Kind() != reflect.Slice {

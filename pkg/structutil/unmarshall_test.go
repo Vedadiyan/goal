@@ -56,6 +56,11 @@ type (
 		Text    string
 		Boolean bool
 	}
+	ArrayMap2d struct {
+		Number  [][]map[string]any
+		Text    string
+		Boolean bool
+	}
 	ArrayStructMulti struct {
 		Number  [][]Simple
 		Text    string
@@ -270,6 +275,28 @@ func TestArrayMap(t *testing.T) {
 		"Boolean": true,
 	}
 	unmarshalled := new(ArrayMap)
+	err := Unmarshal(data, unmarshalled)
+	if err != nil {
+		t.FailNow()
+	}
+}
+
+func TestArrayMap2d(t *testing.T) {
+	data := map[string]any{
+		"Number": [][]any{
+			{
+				map[string]any{
+
+					"Number":  10,
+					"Text":    "Hello World",
+					"Boolean": true,
+				},
+			},
+		},
+		"Text":    "Hello World",
+		"Boolean": true,
+	}
+	unmarshalled := new(ArrayMap2d)
 	err := Unmarshal(data, unmarshalled)
 	if err != nil {
 		t.FailNow()
