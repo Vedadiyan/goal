@@ -261,7 +261,7 @@ func UnmarshalMessageMap(d map[string]any, f reflect.StructField, v reflect.Valu
 			}
 		}
 	}
-	v.Set(mapper)
+	SetArray(mapper.Interface(), v, pointerDepth)
 	return nil
 }
 
@@ -328,6 +328,9 @@ func UnmarshalSlice(d map[string]any, f reflect.StructField, v reflect.Value, po
 		v1 := reflect.ValueOf(in)
 		if v1.Kind() == reflect.Map {
 			v := reflect.New(original)
+			if original.Kind() == reflect.Map {
+				return v1
+			}
 			if original.Kind() == reflect.Interface {
 				return v1
 			}

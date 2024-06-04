@@ -76,6 +76,11 @@ type (
 		Text    string
 		Boolean bool
 	}
+	DoublePointerStructArray struct {
+		Number  **[]Simple
+		Text    string
+		Boolean bool
+	}
 	DoublePointerArray struct {
 		Number  **[]int
 		Text    string
@@ -88,6 +93,11 @@ type (
 	}
 	ArrayMap struct {
 		Number  []map[string]any
+		Text    string
+		Boolean bool
+	}
+	PointerArrayMap struct {
+		Number  *[]map[string]any
 		Text    string
 		Boolean bool
 	}
@@ -118,6 +128,16 @@ type (
 	}
 	MapStruct struct {
 		Number  map[string]Simple
+		Text    string
+		Boolean bool
+	}
+	PointerMapStruct struct {
+		Number  *map[string]Simple
+		Text    string
+		Boolean bool
+	}
+	PointerMapAnyStruct struct {
+		Number  *map[string]any
 		Text    string
 		Boolean bool
 	}
@@ -292,6 +312,25 @@ func TestPointerStructArray(t *testing.T) {
 	}
 }
 
+func TestDoublePointerStructArray(t *testing.T) {
+	data := map[string]any{
+		"Number": []any{
+			map[string]any{
+
+				"Number":  10,
+				"Text":    "Hello World",
+				"Boolean": true,
+			}},
+		"Text":    "Hello World",
+		"Boolean": true,
+	}
+	unmarshalled := new(DoublePointerStructArray)
+	err := Unmarshal(data, unmarshalled)
+	if err != nil {
+		t.FailNow()
+	}
+}
+
 func TestDoublePointerArray(t *testing.T) {
 	data := map[string]any{
 		"Number":  []any{1, 2, 3, 4, 5},
@@ -331,6 +370,44 @@ func TestSimpleStruct(t *testing.T) {
 		"Boolean": true,
 	}
 	unmarshalled := new(MapStruct)
+	err := Unmarshal(data, unmarshalled)
+	if err != nil {
+		t.FailNow()
+	}
+}
+
+func TestSimpleMapStruct(t *testing.T) {
+	data := map[string]any{
+		"Number": map[string]any{
+			"1": map[string]any{
+				"Number":  10,
+				"Text":    "Hello World",
+				"Boolean": true,
+			},
+		},
+		"Text":    "Hello World",
+		"Boolean": true,
+	}
+	unmarshalled := new(PointerMapStruct)
+	err := Unmarshal(data, unmarshalled)
+	if err != nil {
+		t.FailNow()
+	}
+}
+
+func TestSimpleMapAnyStruct(t *testing.T) {
+	data := map[string]any{
+		"Number": map[string]any{
+			"1": map[string]any{
+				"Number":  10,
+				"Text":    "Hello World",
+				"Boolean": true,
+			},
+		},
+		"Text":    "Hello World",
+		"Boolean": true,
+	}
+	unmarshalled := new(PointerMapAnyStruct)
 	err := Unmarshal(data, unmarshalled)
 	if err != nil {
 		t.FailNow()
@@ -414,6 +491,25 @@ func TestArrayMap(t *testing.T) {
 		"Boolean": true,
 	}
 	unmarshalled := new(ArrayMap)
+	err := Unmarshal(data, unmarshalled)
+	if err != nil {
+		t.FailNow()
+	}
+}
+
+func TestPointerArrayMap(t *testing.T) {
+	data := map[string]any{
+		"Number": []any{
+			map[string]any{
+
+				"Number":  10,
+				"Text":    "Hello World",
+				"Boolean": true,
+			}},
+		"Text":    "Hello World",
+		"Boolean": true,
+	}
+	unmarshalled := new(PointerArrayMap)
 	err := Unmarshal(data, unmarshalled)
 	if err != nil {
 		t.FailNow()
