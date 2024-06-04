@@ -79,7 +79,7 @@ func UnmarshallSimple[T any](d map[string]any, f reflect.StructField, v reflect.
 	if err != nil {
 		return err
 	}
-	v.Set(reflect.ValueOf(output.(T)))
+	Set[T](output.(T), v, pointerDepth)
 	return nil
 }
 
@@ -105,15 +105,33 @@ func UnmarshallSimpleSlice[T any](d map[string]any, f reflect.StructField, v ref
 		}
 		slice = append(slice, value.(T))
 	}
-	v.Set(reflect.ValueOf(slice))
+	Set[[]T](slice, v, pointerDepth)
 	return nil
 }
 
 func Set[T any](value T, v reflect.Value, refrenceDepth int) {
 	if refrenceDepth != 0 {
-		pointerType := reflect.PointerTo(reflect.TypeOf(0))
+		pointerType := reflect.TypeOf(new(T))
 		pointerValue := reflect.New(pointerType)
 		pointerValue.Elem().Set(reflect.ValueOf(&value))
+		for i := 1; i < refrenceDepth; i++ {
+			pointerType = reflect.PointerTo(pointerType)
+			temp := reflect.New(pointerType)
+			temp.Elem().Set(pointerValue)
+			pointerValue = temp
+		}
+		v.Set(pointerValue.Elem())
+		return
+	}
+	v.Set(reflect.ValueOf(value))
+}
+
+func SetStruct(value any, v reflect.Value, refrenceDepth int) {
+	if refrenceDepth != 0 {
+		pointerType := reflect.TypeOf(value)
+		pointerValue := reflect.New(pointerType)
+		x := reflect.ValueOf(&value).Elem().Interface()
+		pointerValue.Elem().Set(reflect.ValueOf(x))
 		for i := 1; i < refrenceDepth; i++ {
 			pointerType = reflect.PointerTo(pointerType)
 			temp := reflect.New(pointerType)
@@ -144,7 +162,13 @@ func UnmarshalMessage(d map[string]any, f reflect.StructField, v reflect.Value, 
 		return fmt.Errorf("expected object by found %T", value)
 	}
 	message := reflect.New(f.Type)
-	return Unmarshal(valueRaw, message.Interface())
+	messageInterface := message.Interface()
+	err := Unmarshal(valueRaw, messageInterface)
+	if err != nil {
+		return error
+	}
+	SetStruct(messageInterface, v, pointerDepth)
+	return nil
 }
 
 func UnmarshalMessageList(d map[string]any, f reflect.StructField, v reflect.Value, pointerDepth int) (error error) {

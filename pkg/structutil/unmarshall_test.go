@@ -16,6 +16,16 @@ type (
 		Text    string
 		Boolean bool
 	}
+	StructPointer struct {
+		Number  *Simple
+		Text    string
+		Boolean bool
+	}
+	StructDoublePointer struct {
+		Number  **Simple
+		Text    string
+		Boolean bool
+	}
 	SimpleDoublePointer struct {
 		Number  **int
 		Text    string
@@ -118,6 +128,39 @@ func TestSimplePointer(t *testing.T) {
 		"Boolean": true,
 	}
 	unmarshalled := new(SimplePointer)
+	err := Unmarshal(data, unmarshalled)
+	if err != nil {
+		t.FailNow()
+	}
+}
+
+func TestStructPointer(t *testing.T) {
+	data := map[string]any{
+		"Number": map[string]any{
+			"Number":  10,
+			"Text":    "Hello World",
+			"Boolean": true,
+		},
+		"Text":    "Hello World2",
+		"Boolean": true,
+	}
+	unmarshalled := new(StructPointer)
+	err := Unmarshal(data, unmarshalled)
+	if err != nil {
+		t.FailNow()
+	}
+}
+func TestDoubleStructPointer(t *testing.T) {
+	data := map[string]any{
+		"Number": map[string]any{
+			"Number":  10,
+			"Text":    "Hello World",
+			"Boolean": true,
+		},
+		"Text":    "Hello World2",
+		"Boolean": true,
+	}
+	unmarshalled := new(StructDoublePointer)
 	err := Unmarshal(data, unmarshalled)
 	if err != nil {
 		t.FailNow()

@@ -91,7 +91,7 @@ func Single[TRequest any, TResponse any](app *fiber.App, uri string, method stri
 		if err != nil {
 			c.Status(fiber.StatusInternalServerError)
 			c.Response().Header.Add("Content-Type", "application/json")
-			c.Send([]byte(err.Error()))
+			_ = c.Send([]byte(err.Error()))
 			return nil
 		}
 		mapper, err := protoutil.Marshal(any(*res).(proto.Message))
