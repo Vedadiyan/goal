@@ -66,6 +66,21 @@ type (
 		Text    string
 		Boolean bool
 	}
+	PointerArray struct {
+		Number  *[]int
+		Text    string
+		Boolean bool
+	}
+	PointerStructArray struct {
+		Number  *[]Simple
+		Text    string
+		Boolean bool
+	}
+	DoublePointerArray struct {
+		Number  **[]int
+		Text    string
+		Boolean bool
+	}
 	ArrayStruct struct {
 		Number  []Simple
 		Text    string
@@ -239,6 +254,51 @@ func TestSimpleArray(t *testing.T) {
 		"Boolean": true,
 	}
 	unmarshalled := new(SimpleArray)
+	err := Unmarshal(data, unmarshalled)
+	if err != nil {
+		t.FailNow()
+	}
+}
+
+func TestPointerArray(t *testing.T) {
+	data := map[string]any{
+		"Number":  []any{1, 2, 3, 4, 5},
+		"Text":    "Hello World",
+		"Boolean": true,
+	}
+	unmarshalled := new(PointerArray)
+	err := Unmarshal(data, unmarshalled)
+	if err != nil {
+		t.FailNow()
+	}
+}
+
+func TestPointerStructArray(t *testing.T) {
+	data := map[string]any{
+		"Number": []any{
+			map[string]any{
+
+				"Number":  10,
+				"Text":    "Hello World",
+				"Boolean": true,
+			}},
+		"Text":    "Hello World",
+		"Boolean": true,
+	}
+	unmarshalled := new(PointerStructArray)
+	err := Unmarshal(data, unmarshalled)
+	if err != nil {
+		t.FailNow()
+	}
+}
+
+func TestDoublePointerArray(t *testing.T) {
+	data := map[string]any{
+		"Number":  []any{1, 2, 3, 4, 5},
+		"Text":    "Hello World",
+		"Boolean": true,
+	}
+	unmarshalled := new(DoublePointerArray)
 	err := Unmarshal(data, unmarshalled)
 	if err != nil {
 		t.FailNow()

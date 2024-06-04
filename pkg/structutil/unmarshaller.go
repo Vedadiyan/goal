@@ -144,6 +144,24 @@ func SetStruct(value any, v reflect.Value, refrenceDepth int) {
 	v.Set(reflect.ValueOf(value))
 }
 
+func SetArray(value any, v reflect.Value, refrenceDepth int) {
+	if refrenceDepth != 0 {
+		pointerType := reflect.TypeOf(value)
+		pointerValue := reflect.New(pointerType)
+		x := reflect.ValueOf(&value).Elem().Interface()
+		pointerValue.Elem().Set(reflect.ValueOf(x))
+		for i := 1; i < refrenceDepth; i++ {
+			pointerType = reflect.PointerTo(pointerType)
+			temp := reflect.New(pointerType)
+			temp.Elem().Set(pointerValue)
+			pointerValue = temp
+		}
+		v.Set(pointerValue)
+		return
+	}
+	v.Set(reflect.ValueOf(value))
+}
+
 func UnmarshalMessage(d map[string]any, f reflect.StructField, v reflect.Value, pointerDepth int) (error error) {
 	defer Protect(&error)
 	value, ok := d[GetFieldName(f)]
@@ -310,7 +328,7 @@ func UnmarshalSlice(d map[string]any, f reflect.StructField, v reflect.Value, po
 		v1 := reflect.ValueOf(in)
 		if v1.Kind() == reflect.Map {
 			v := reflect.New(original)
-			if original.Elem().Kind() == reflect.Interface {
+			if original.Kind() == reflect.Interface {
 				return v1
 			}
 			_ = Unmarshal(in.(map[string]any), v.Interface())
@@ -334,7 +352,7 @@ func UnmarshalSlice(d map[string]any, f reflect.StructField, v reflect.Value, po
 		return slice
 	}
 	tracker := recursiveFn(value, 0)
-	v.Set(tracker)
+	SetArray(tracker.Interface(), v, pointerDepth)
 	return nil
 }
 
