@@ -17,7 +17,7 @@ type (
 		Boolean bool
 	}
 	StructPointer struct {
-		Number  *Simple
+		Number  Simple
 		Text    string
 		Boolean bool
 	}
@@ -67,7 +67,7 @@ type (
 		Boolean bool
 	}
 	PointerArray struct {
-		Number  *[]int
+		Number  []**int
 		Text    string
 		Boolean bool
 	}

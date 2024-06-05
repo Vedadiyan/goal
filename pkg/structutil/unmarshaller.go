@@ -48,6 +48,7 @@ func init() {
 
 	_unmarshallers[int(reflect.Struct)] = UnmarshalMessage
 	_unmarshallers[int(reflect.Pointer)] = UnmarshalPointer
+	_unmarshallers[int(reflect.Pointer)*100] = UnmarshalPointerSlice
 
 	_unmarshallers[int(reflect.Struct)*100] = UnmarshalMessageList
 
@@ -79,7 +80,7 @@ func UnmarshallSimple[T any](d map[string]any, f reflect.StructField, v reflect.
 	if err != nil {
 		return err
 	}
-	Set[T](output.(T), v, pointerDepth)
+	Set(output.(T), v, pointerDepth)
 	return nil
 }
 
@@ -105,51 +106,15 @@ func UnmarshallSimpleSlice[T any](d map[string]any, f reflect.StructField, v ref
 		}
 		slice = append(slice, value.(T))
 	}
-	Set[[]T](slice, v, pointerDepth)
+	Set(slice, v, pointerDepth)
 	return nil
 }
 
-func Set[T any](value T, v reflect.Value, refrenceDepth int) {
-	if refrenceDepth != 0 {
-		pointerType := reflect.TypeOf(new(T))
-		pointerValue := reflect.New(pointerType)
-		pointerValue.Elem().Set(reflect.ValueOf(&value))
-		for i := 1; i < refrenceDepth; i++ {
-			pointerType = reflect.PointerTo(pointerType)
-			temp := reflect.New(pointerType)
-			temp.Elem().Set(pointerValue)
-			pointerValue = temp
-		}
-		v.Set(pointerValue.Elem())
-		return
-	}
-	v.Set(reflect.ValueOf(value))
-}
-
-func SetStruct(value any, v reflect.Value, refrenceDepth int) {
+func Set(value any, v reflect.Value, refrenceDepth int) {
 	if refrenceDepth != 0 {
 		pointerType := reflect.TypeOf(value)
 		pointerValue := reflect.New(pointerType)
-		x := reflect.ValueOf(&value).Elem().Interface()
-		pointerValue.Elem().Set(reflect.ValueOf(x))
-		for i := 1; i < refrenceDepth; i++ {
-			pointerType = reflect.PointerTo(pointerType)
-			temp := reflect.New(pointerType)
-			temp.Elem().Set(pointerValue)
-			pointerValue = temp
-		}
-		v.Set(pointerValue.Elem())
-		return
-	}
-	v.Set(reflect.ValueOf(value))
-}
-
-func SetArray(value any, v reflect.Value, refrenceDepth int) {
-	if refrenceDepth != 0 {
-		pointerType := reflect.TypeOf(value)
-		pointerValue := reflect.New(pointerType)
-		x := reflect.ValueOf(&value).Elem().Interface()
-		pointerValue.Elem().Set(reflect.ValueOf(x))
+		pointerValue.Elem().Set(reflect.ValueOf(reflect.ValueOf(&value).Elem().Interface()))
 		for i := 1; i < refrenceDepth; i++ {
 			pointerType = reflect.PointerTo(pointerType)
 			temp := reflect.New(pointerType)
@@ -185,7 +150,7 @@ func UnmarshalMessage(d map[string]any, f reflect.StructField, v reflect.Value, 
 	if err != nil {
 		return error
 	}
-	SetStruct(messageInterface, v, pointerDepth)
+	Set(message.Elem().Interface(), v, pointerDepth)
 	return nil
 }
 
@@ -261,7 +226,7 @@ func UnmarshalMessageMap(d map[string]any, f reflect.StructField, v reflect.Valu
 			}
 		}
 	}
-	SetArray(mapper.Interface(), v, pointerDepth)
+	Set(mapper.Interface(), v, pointerDepth)
 	return nil
 }
 
@@ -355,7 +320,7 @@ func UnmarshalSlice(d map[string]any, f reflect.StructField, v reflect.Value, po
 		return slice
 	}
 	tracker := recursiveFn(value, 0)
-	SetArray(tracker.Interface(), v, pointerDepth)
+	Set(tracker.Interface(), v, pointerDepth)
 	return nil
 }
 
@@ -363,6 +328,65 @@ func UnmarshalPointer(d map[string]any, f reflect.StructField, v reflect.Value, 
 	defer Protect(&error)
 	f.Type = f.Type.Elem()
 	return _unmarshallers[GetKindRaw(f.Type.Kind())](d, f, v, pointerDepth+1)
+}
+
+func UnmarshalPointerSlice(d map[string]any, f reflect.StructField, v reflect.Value, pointerDepth int) (error error) {
+	defer Protect(&error)
+	value, ok := d[GetFieldName(f)]
+	if !ok {
+		return nil
+	}
+	if value == nil {
+		return nil
+	}
+	depth := 0
+	original := f.Type.Elem()
+	for original.Kind() == reflect.Slice {
+		original = original.Elem()
+		depth++
+	}
+	ptrDepth := 0
+	original2 := f.Type.Elem()
+	for original2.Kind() == reflect.Pointer {
+		original2 = original2.Elem()
+		ptrDepth++
+	}
+	var recursiveFn func(in any, depth int) reflect.Value
+	recursiveFn = func(in any, d int) reflect.Value {
+		v1 := reflect.ValueOf(in)
+		if v1.Kind() == reflect.Map {
+			v := reflect.New(original)
+			if original.Kind() == reflect.Map {
+				return v1
+			}
+			if original.Kind() == reflect.Interface {
+				return v1
+			}
+			_ = Unmarshal(in.(map[string]any), v.Interface())
+			return v.Elem()
+		}
+		if v1.Kind() != reflect.Slice {
+			return v1
+		}
+		sliceT := reflect.SliceOf(original)
+		for i := 0; i < depth-d; i++ {
+			sliceT = reflect.SliceOf(sliceT)
+		}
+		test := fmt.Sprintf("%v", sliceT)
+		_ = test
+		slice := reflect.MakeSlice(sliceT, 0, 0)
+		for i := 0; i < v1.Len(); i++ {
+			value := v1.Index(i).Interface()
+			next := recursiveFn(value, d+1).Interface()
+			v := reflect.New(original)
+			Set(next, v.Elem(), ptrDepth)
+			slice = reflect.Append(slice, v.Elem())
+		}
+		return slice
+	}
+	tracker := recursiveFn(value, 0)
+	Set(tracker.Interface(), v, pointerDepth)
+	return nil
 }
 
 func GetKind(f reflect.StructField) int {
