@@ -331,7 +331,7 @@ func UnmarshalPointer(d map[string]any, f reflect.StructField, v reflect.Value, 
 }
 
 func UnmarshalPointerSlice(d map[string]any, f reflect.StructField, v reflect.Value, pointerDepth int) (error error) {
-	defer Protect(&error)
+	//defer Protect(&error)
 	value, ok := d[GetFieldName(f)]
 	if !ok {
 		return nil
@@ -362,8 +362,17 @@ func UnmarshalPointerSlice(d map[string]any, f reflect.StructField, v reflect.Va
 			if original.Kind() == reflect.Interface {
 				return v1
 			}
-			_ = Unmarshal(in.(map[string]any), v.Interface())
-			return v.Elem()
+			intfc := v
+			if ptrDepth > 0 {
+				for i := 0; i < ptrDepth; i++ {
+					intfc = v.Elem()
+					intfc.Set(reflect.New(original2))
+				}
+			}
+			xx := intfc.Interface()
+			_ = xx
+			_ = Unmarshal(in.(map[string]any), intfc.Interface())
+			return intfc.Elem()
 		}
 		if v1.Kind() != reflect.Slice {
 			return v1
