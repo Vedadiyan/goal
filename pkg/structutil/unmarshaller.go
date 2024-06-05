@@ -273,6 +273,44 @@ func UnmarshalMessageMapList(d map[string]any, f reflect.StructField, v reflect.
 	return nil
 }
 
+func LoadKey(data any, dimensions int, baseType reflect.Type, arrayType reflect.Type, referenceCount int, iteration int) (*reflect.Value, error) {
+	dataValue := reflect.ValueOf(data)
+	if dataValue.Kind() == reflect.Map {
+		baseValue := reflect.New(baseType)
+		if baseType.Kind() == reflect.Map {
+			return &dataValue, nil
+		}
+		if baseType.Kind() == reflect.Interface {
+			return &dataValue, nil
+		}
+		err := Unmarshal(data.(map[string]any), baseValue.Interface())
+		if err != nil {
+			return nil, err
+		}
+		output := baseValue.Elem()
+		return &output, nil
+	}
+	if dataValue.Kind() != reflect.Slice {
+		return &dataValue, nil
+	}
+	sliceType := reflect.SliceOf(arrayType)
+	for i := 0; i < dimensions-iteration; i++ {
+		sliceType = reflect.SliceOf(sliceType)
+	}
+	slice := reflect.MakeSlice(sliceType, 0, 0)
+	for i := 0; i < dataValue.Len(); i++ {
+		value := dataValue.Index(i).Interface()
+		next, err := LoadKey(value, dimensions, baseType, arrayType, referenceCount, iteration+1)
+		if err != nil {
+			return nil, err
+		}
+		v := reflect.New(arrayType)
+		Set(next.Interface(), v.Elem(), referenceCount)
+		slice = reflect.Append(slice, v.Elem())
+	}
+	return &slice, nil
+}
+
 func UnmarshalSlice(d map[string]any, f reflect.StructField, v reflect.Value, pointerDepth int) (error error) {
 	defer Protect(&error)
 	value, ok := d[GetFieldName(f)]
@@ -288,38 +326,10 @@ func UnmarshalSlice(d map[string]any, f reflect.StructField, v reflect.Value, po
 		original = original.Elem()
 		depth++
 	}
-	var recursiveFn func(in any, depth int) reflect.Value
-	recursiveFn = func(in any, d int) reflect.Value {
-		v1 := reflect.ValueOf(in)
-		if v1.Kind() == reflect.Map {
-			v := reflect.New(original)
-			if original.Kind() == reflect.Map {
-				return v1
-			}
-			if original.Kind() == reflect.Interface {
-				return v1
-			}
-			_ = Unmarshal(in.(map[string]any), v.Interface())
-			return v.Elem()
-		}
-		if v1.Kind() != reflect.Slice {
-			return v1
-		}
-		sliceT := reflect.SliceOf(original)
-		for i := 0; i < depth-d; i++ {
-			sliceT = reflect.SliceOf(sliceT)
-		}
-		test := fmt.Sprintf("%v", sliceT)
-		_ = test
-		slice := reflect.MakeSlice(sliceT, 0, 0)
-		for i := 0; i < v1.Len(); i++ {
-			value := v1.Index(i).Interface()
-			next := recursiveFn(value, d+1).Interface()
-			slice = reflect.Append(slice, reflect.ValueOf(next))
-		}
-		return slice
+	tracker, err := LoadKey(value, depth, original, original, 0, 0)
+	if err != nil {
+		return err
 	}
-	tracker := recursiveFn(value, 0)
 	Set(tracker.Interface(), v, pointerDepth)
 	return nil
 }
@@ -351,40 +361,10 @@ func UnmarshalPointerSlice(d map[string]any, f reflect.StructField, v reflect.Va
 		pointerType = pointerType.Elem()
 		referenceCount++
 	}
-	var recursiveFn func(in any, depth int) reflect.Value
-	recursiveFn = func(in any, d int) reflect.Value {
-		v1 := reflect.ValueOf(in)
-		if v1.Kind() == reflect.Map {
-			v := reflect.New(pointerType)
-			if pointerType.Kind() == reflect.Map {
-				return v1
-			}
-			if pointerType.Kind() == reflect.Interface {
-				return v1
-			}
-			_ = Unmarshal(in.(map[string]any), v.Interface())
-			return v.Elem()
-		}
-		if v1.Kind() != reflect.Slice {
-			return v1
-		}
-		sliceT := reflect.SliceOf(baseType)
-		for i := 0; i < dimensions-d; i++ {
-			sliceT = reflect.SliceOf(sliceT)
-		}
-		test := fmt.Sprintf("%v", sliceT)
-		_ = test
-		slice := reflect.MakeSlice(sliceT, 0, 0)
-		for i := 0; i < v1.Len(); i++ {
-			value := v1.Index(i).Interface()
-			next := recursiveFn(value, d+1).Interface()
-			v := reflect.New(baseType)
-			Set(next, v.Elem(), referenceCount)
-			slice = reflect.Append(slice, v.Elem())
-		}
-		return slice
+	tracker, err := LoadKey(value, dimensions, pointerType, baseType, referenceCount, 0)
+	if err != nil {
+		return err
 	}
-	tracker := recursiveFn(value, 0)
 	Set(tracker.Interface(), v, pointerDepth)
 	return nil
 }
