@@ -356,10 +356,10 @@ func UnmarshalPointerSlice(d map[string]any, f reflect.StructField, v reflect.Va
 		v1 := reflect.ValueOf(in)
 		if v1.Kind() == reflect.Map {
 			v := reflect.New(original2)
-			if original.Kind() == reflect.Map {
+			if original2.Kind() == reflect.Map {
 				return v1
 			}
-			if original.Kind() == reflect.Interface {
+			if original2.Kind() == reflect.Interface {
 				return v1
 			}
 			_ = Unmarshal(in.(map[string]any), v.Interface())
