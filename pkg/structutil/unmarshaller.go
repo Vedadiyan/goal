@@ -355,24 +355,15 @@ func UnmarshalPointerSlice(d map[string]any, f reflect.StructField, v reflect.Va
 	recursiveFn = func(in any, d int) reflect.Value {
 		v1 := reflect.ValueOf(in)
 		if v1.Kind() == reflect.Map {
-			v := reflect.New(original)
+			v := reflect.New(original2)
 			if original.Kind() == reflect.Map {
 				return v1
 			}
 			if original.Kind() == reflect.Interface {
 				return v1
 			}
-			intfc := v
-			if ptrDepth > 0 {
-				for i := 0; i < ptrDepth; i++ {
-					intfc = v.Elem()
-					intfc.Set(reflect.New(original2))
-				}
-			}
-			xx := intfc.Interface()
-			_ = xx
-			_ = Unmarshal(in.(map[string]any), intfc.Interface())
-			return intfc.Elem()
+			_ = Unmarshal(in.(map[string]any), v.Interface())
+			return v.Elem()
 		}
 		if v1.Kind() != reflect.Slice {
 			return v1
