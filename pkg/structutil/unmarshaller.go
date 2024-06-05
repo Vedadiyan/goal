@@ -12,45 +12,45 @@ var (
 
 func init() {
 	_unmarshallers = make(map[int]func(data map[string]any, field reflect.StructField, reflect reflect.Value, pointerDepth int) error)
-	_unmarshallers[int(reflect.Int8)] = UnmarshallSimple[int8]
-	_unmarshallers[int(reflect.Int16)] = UnmarshallSimple[int16]
-	_unmarshallers[int(reflect.Int32)] = UnmarshallSimple[int32]
-	_unmarshallers[int(reflect.Int)] = UnmarshallSimple[int]
-	_unmarshallers[int(reflect.Int64)] = UnmarshallSimple[int64]
+	_unmarshallers[int(reflect.Int8)] = UnmarshalPrimitive[int8]
+	_unmarshallers[int(reflect.Int16)] = UnmarshalPrimitive[int16]
+	_unmarshallers[int(reflect.Int32)] = UnmarshalPrimitive[int32]
+	_unmarshallers[int(reflect.Int)] = UnmarshalPrimitive[int]
+	_unmarshallers[int(reflect.Int64)] = UnmarshalPrimitive[int64]
 
-	_unmarshallers[int(reflect.Uint8)] = UnmarshallSimple[uint8]
-	_unmarshallers[int(reflect.Uint16)] = UnmarshallSimple[uint16]
-	_unmarshallers[int(reflect.Uint32)] = UnmarshallSimple[uint32]
-	_unmarshallers[int(reflect.Uint)] = UnmarshallSimple[uint]
-	_unmarshallers[int(reflect.Uint64)] = UnmarshallSimple[uint64]
+	_unmarshallers[int(reflect.Uint8)] = UnmarshalPrimitive[uint8]
+	_unmarshallers[int(reflect.Uint16)] = UnmarshalPrimitive[uint16]
+	_unmarshallers[int(reflect.Uint32)] = UnmarshalPrimitive[uint32]
+	_unmarshallers[int(reflect.Uint)] = UnmarshalPrimitive[uint]
+	_unmarshallers[int(reflect.Uint64)] = UnmarshalPrimitive[uint64]
 
-	_unmarshallers[int(reflect.Float32)] = UnmarshallSimple[float32]
-	_unmarshallers[int(reflect.Float64)] = UnmarshallSimple[float64]
-	_unmarshallers[int(reflect.Bool)] = UnmarshallSimple[bool]
-	_unmarshallers[int(reflect.String)] = UnmarshallSimple[string]
+	_unmarshallers[int(reflect.Float32)] = UnmarshalPrimitive[float32]
+	_unmarshallers[int(reflect.Float64)] = UnmarshalPrimitive[float64]
+	_unmarshallers[int(reflect.Bool)] = UnmarshalPrimitive[bool]
+	_unmarshallers[int(reflect.String)] = UnmarshalPrimitive[string]
 
-	_unmarshallers[int(reflect.Int8)*100] = UnmarshallSimpleSlice[int8]
-	_unmarshallers[int(reflect.Int16)*100] = UnmarshallSimpleSlice[int16]
-	_unmarshallers[int(reflect.Int32)*100] = UnmarshallSimpleSlice[int32]
-	_unmarshallers[int(reflect.Int)*100] = UnmarshallSimpleSlice[int]
-	_unmarshallers[int(reflect.Int64)*100] = UnmarshallSimpleSlice[int64]
+	_unmarshallers[int(reflect.Int8)*100] = UnmarshalPrimitiveSlice[int8]
+	_unmarshallers[int(reflect.Int16)*100] = UnmarshalPrimitiveSlice[int16]
+	_unmarshallers[int(reflect.Int32)*100] = UnmarshalPrimitiveSlice[int32]
+	_unmarshallers[int(reflect.Int)*100] = UnmarshalPrimitiveSlice[int]
+	_unmarshallers[int(reflect.Int64)*100] = UnmarshalPrimitiveSlice[int64]
 
-	_unmarshallers[int(reflect.Uint8)*100] = UnmarshallSimpleSlice[uint8]
-	_unmarshallers[int(reflect.Uint16)*100] = UnmarshallSimpleSlice[uint16]
-	_unmarshallers[int(reflect.Uint32)*100] = UnmarshallSimpleSlice[uint32]
-	_unmarshallers[int(reflect.Uint)*100] = UnmarshallSimpleSlice[uint]
-	_unmarshallers[int(reflect.Uint64)*100] = UnmarshallSimpleSlice[uint64]
+	_unmarshallers[int(reflect.Uint8)*100] = UnmarshalPrimitiveSlice[uint8]
+	_unmarshallers[int(reflect.Uint16)*100] = UnmarshalPrimitiveSlice[uint16]
+	_unmarshallers[int(reflect.Uint32)*100] = UnmarshalPrimitiveSlice[uint32]
+	_unmarshallers[int(reflect.Uint)*100] = UnmarshalPrimitiveSlice[uint]
+	_unmarshallers[int(reflect.Uint64)*100] = UnmarshalPrimitiveSlice[uint64]
 
-	_unmarshallers[int(reflect.Float32)*100] = UnmarshallSimpleSlice[float32]
-	_unmarshallers[int(reflect.Float64)*100] = UnmarshallSimpleSlice[float64]
-	_unmarshallers[int(reflect.Bool)*100] = UnmarshallSimpleSlice[bool]
-	_unmarshallers[int(reflect.String)*100] = UnmarshallSimpleSlice[string]
+	_unmarshallers[int(reflect.Float32)*100] = UnmarshalPrimitiveSlice[float32]
+	_unmarshallers[int(reflect.Float64)*100] = UnmarshalPrimitiveSlice[float64]
+	_unmarshallers[int(reflect.Bool)*100] = UnmarshalPrimitiveSlice[bool]
+	_unmarshallers[int(reflect.String)*100] = UnmarshalPrimitiveSlice[string]
 
 	_unmarshallers[int(reflect.Struct)] = UnmarshalMessage
+	_unmarshallers[int(reflect.Struct)*100] = UnmarshalMessageList
+
 	_unmarshallers[int(reflect.Pointer)] = UnmarshalPointer
 	_unmarshallers[int(reflect.Pointer)*100] = UnmarshalPointerSlice
-
-	_unmarshallers[int(reflect.Struct)*100] = UnmarshalMessageList
 
 	_unmarshallers[int(reflect.Map)] = UnmarshalMessageMap
 	_unmarshallers[int(reflect.Map)*100] = UnmarshalMessageMapList
@@ -66,7 +66,7 @@ func Protect(err *error) {
 	}
 }
 
-func UnmarshallSimple[T any](d map[string]any, f reflect.StructField, v reflect.Value, pointerDepth int) (error error) {
+func UnmarshalPrimitive[T any](d map[string]any, f reflect.StructField, v reflect.Value, pointerDepth int) (error error) {
 	defer Protect(&error)
 	value, ok := d[GetFieldName(f)]
 	if !ok {
@@ -84,7 +84,7 @@ func UnmarshallSimple[T any](d map[string]any, f reflect.StructField, v reflect.
 	return nil
 }
 
-func UnmarshallSimpleSlice[T any](d map[string]any, f reflect.StructField, v reflect.Value, pointerDepth int) (error error) {
+func UnmarshalPrimitiveSlice[T any](d map[string]any, f reflect.StructField, v reflect.Value, pointerDepth int) (error error) {
 	defer Protect(&error)
 	value, ok := d[GetFieldName(f)]
 	if !ok {
