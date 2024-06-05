@@ -275,40 +275,50 @@ func UnmarshalMessageMapList(d map[string]any, f reflect.StructField, v reflect.
 
 func LoadKey(data any, dimensions int, baseType reflect.Type, arrayType reflect.Type, referenceCount int, iteration int) (*reflect.Value, error) {
 	dataValue := reflect.ValueOf(data)
-	if dataValue.Kind() == reflect.Map {
-		baseValue := reflect.New(baseType)
-		if baseType.Kind() == reflect.Map {
+	switch dataValue.Kind() {
+	case reflect.Map:
+		{
+			baseValue := reflect.New(baseType)
+			switch baseValue.Kind() {
+			case reflect.Map, reflect.Interface:
+				{
+					return &dataValue, nil
+				}
+			default:
+				{
+					err := Unmarshal(data.(map[string]any), baseValue.Interface())
+					if err != nil {
+						return nil, err
+					}
+					output := baseValue.Elem()
+					return &output, nil
+				}
+			}
+		}
+	case reflect.Slice:
+		{
+			sliceType := reflect.SliceOf(arrayType)
+			for i := 0; i < dimensions-iteration; i++ {
+				sliceType = reflect.SliceOf(sliceType)
+			}
+			slice := reflect.MakeSlice(sliceType, 0, 0)
+			for i := 0; i < dataValue.Len(); i++ {
+				value := dataValue.Index(i).Interface()
+				next, err := LoadKey(value, dimensions, baseType, arrayType, referenceCount, iteration+1)
+				if err != nil {
+					return nil, err
+				}
+				v := reflect.New(arrayType)
+				Set(next.Interface(), v.Elem(), referenceCount)
+				slice = reflect.Append(slice, v.Elem())
+			}
+			return &slice, nil
+		}
+	default:
+		{
 			return &dataValue, nil
 		}
-		if baseType.Kind() == reflect.Interface {
-			return &dataValue, nil
-		}
-		err := Unmarshal(data.(map[string]any), baseValue.Interface())
-		if err != nil {
-			return nil, err
-		}
-		output := baseValue.Elem()
-		return &output, nil
 	}
-	if dataValue.Kind() != reflect.Slice {
-		return &dataValue, nil
-	}
-	sliceType := reflect.SliceOf(arrayType)
-	for i := 0; i < dimensions-iteration; i++ {
-		sliceType = reflect.SliceOf(sliceType)
-	}
-	slice := reflect.MakeSlice(sliceType, 0, 0)
-	for i := 0; i < dataValue.Len(); i++ {
-		value := dataValue.Index(i).Interface()
-		next, err := LoadKey(value, dimensions, baseType, arrayType, referenceCount, iteration+1)
-		if err != nil {
-			return nil, err
-		}
-		v := reflect.New(arrayType)
-		Set(next.Interface(), v.Elem(), referenceCount)
-		slice = reflect.Append(slice, v.Elem())
-	}
-	return &slice, nil
 }
 
 func UnmarshalSlice(d map[string]any, f reflect.StructField, v reflect.Value, pointerDepth int) (error error) {
