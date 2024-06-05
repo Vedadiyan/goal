@@ -273,7 +273,7 @@ func UnmarshalMessageMapList(d map[string]any, f reflect.StructField, v reflect.
 	return nil
 }
 
-func LoadKey(data any, dimensions int, baseType reflect.Type, arrayType reflect.Type, referenceCount int, iteration int) (*reflect.Value, error) {
+func CreateSlice(data any, dimensions int, baseType reflect.Type, arrayType reflect.Type, referenceCount int, iteration int) (*reflect.Value, error) {
 	dataValue := reflect.ValueOf(data)
 	switch dataValue.Kind() {
 	case reflect.Map:
@@ -304,7 +304,7 @@ func LoadKey(data any, dimensions int, baseType reflect.Type, arrayType reflect.
 			slice := reflect.MakeSlice(sliceType, 0, 0)
 			for i := 0; i < dataValue.Len(); i++ {
 				value := dataValue.Index(i).Interface()
-				next, err := LoadKey(value, dimensions, baseType, arrayType, referenceCount, iteration+1)
+				next, err := CreateSlice(value, dimensions, baseType, arrayType, referenceCount, iteration+1)
 				if err != nil {
 					return nil, err
 				}
@@ -330,13 +330,8 @@ func UnmarshalSlice(d map[string]any, f reflect.StructField, v reflect.Value, po
 	if value == nil {
 		return nil
 	}
-	depth := 0
-	original := f.Type.Elem()
-	for original.Kind() == reflect.Slice {
-		original = original.Elem()
-		depth++
-	}
-	tracker, err := LoadKey(value, depth, original, original, 0, 0)
+	baseType, dimensions := GetDimensions(f)
+	tracker, err := CreateSlice(value, dimensions, baseType, baseType, 0, 0)
 	if err != nil {
 		return err
 	}
@@ -350,8 +345,28 @@ func UnmarshalPointer(d map[string]any, f reflect.StructField, v reflect.Value, 
 	return _unmarshallers[GetKindRaw(f.Type.Kind())](d, f, v, pointerDepth+1)
 }
 
+func GetDimensions(f reflect.StructField) (reflect.Type, int) {
+	dimensions := 0
+	t := f.Type.Elem()
+	for t.Kind() == reflect.Slice {
+		t = t.Elem()
+		dimensions++
+	}
+	return t, dimensions
+}
+
+func GetRferenceCount(f reflect.StructField) (reflect.Type, int) {
+	referenceCount := 0
+	t := f.Type.Elem()
+	for t.Kind() == reflect.Pointer {
+		t = t.Elem()
+		referenceCount++
+	}
+	return t, referenceCount
+}
+
 func UnmarshalPointerSlice(d map[string]any, f reflect.StructField, v reflect.Value, pointerDepth int) (error error) {
-	//defer Protect(&error)
+	defer Protect(&error)
 	value, ok := d[GetFieldName(f)]
 	if !ok {
 		return nil
@@ -359,19 +374,9 @@ func UnmarshalPointerSlice(d map[string]any, f reflect.StructField, v reflect.Va
 	if value == nil {
 		return nil
 	}
-	dimensions := 0
-	baseType := f.Type.Elem()
-	for baseType.Kind() == reflect.Slice {
-		baseType = baseType.Elem()
-		dimensions++
-	}
-	referenceCount := 0
-	pointerType := f.Type.Elem()
-	for pointerType.Kind() == reflect.Pointer {
-		pointerType = pointerType.Elem()
-		referenceCount++
-	}
-	tracker, err := LoadKey(value, dimensions, pointerType, baseType, referenceCount, 0)
+	baseType, dimensions := GetDimensions(f)
+	pointerType, referenceCount := GetRferenceCount(f)
+	tracker, err := CreateSlice(value, dimensions, pointerType, baseType, referenceCount, 0)
 	if err != nil {
 		return err
 	}
