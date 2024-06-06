@@ -174,15 +174,15 @@ func GetRferenceCount(f reflect.StructField) (reflect.Type, RC) {
 }
 
 func CreateSlice(value any, dimensions int, typeOfElem reflect.Type, typeOfArray reflect.Type, rc RC, itr int) (*reflect.Value, error) {
-	dataValue := reflect.ValueOf(value)
-	switch dataValue.Kind() {
+	valueOfData := reflect.ValueOf(value)
+	switch valueOfData.Kind() {
 	case reflect.Map:
 		{
 			valueOfElem := reflect.New(typeOfElem)
 			switch valueOfElem.Elem().Kind() {
 			case reflect.Map, reflect.Interface:
 				{
-					return &dataValue, nil
+					return &valueOfData, nil
 				}
 			default:
 				{
@@ -202,8 +202,8 @@ func CreateSlice(value any, dimensions int, typeOfElem reflect.Type, typeOfArray
 				typeOfSlice = reflect.SliceOf(typeOfSlice)
 			}
 			valueOfSlice := reflect.MakeSlice(typeOfSlice, 0, 0)
-			for i := 0; i < dataValue.Len(); i++ {
-				ref := dataValue.Index(i).Interface()
+			for i := 0; i < valueOfData.Len(); i++ {
+				ref := valueOfData.Index(i).Interface()
 				next, err := CreateSlice(ref, dimensions, typeOfElem, typeOfArray, rc, itr+1)
 				if err != nil {
 					return nil, err
@@ -216,7 +216,7 @@ func CreateSlice(value any, dimensions int, typeOfElem reflect.Type, typeOfArray
 		}
 	default:
 		{
-			return &dataValue, nil
+			return &valueOfData, nil
 		}
 	}
 }
