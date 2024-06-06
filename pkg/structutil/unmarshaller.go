@@ -6,55 +6,95 @@ import (
 	_ "unsafe"
 )
 
-var (
-	_unmarshallers map[int]func(data map[string]any, field reflect.StructField, reflect reflect.Value, pointerDepth int) error
+type (
+	Field         = reflect.StructField
+	Data          = map[string]any
+	Value         = reflect.Value
+	RC            int
+	UnMarshallers map[int]func(d Data, f Field, v Value, rc RC) error
 )
 
+var (
+	_u UnMarshallers
+)
+
+func UseSignedNumerics(u UnMarshallers) {
+	u[int(reflect.Int8)] = UMPrimitive[int8]
+	u[int(reflect.Int16)] = UMPrimitive[int16]
+	u[int(reflect.Int32)] = UMPrimitive[int32]
+	u[int(reflect.Int)] = UMPrimitive[int]
+	u[int(reflect.Int64)] = UMPrimitive[int64]
+	u[int(reflect.Int8)*100] = UMArray[int8]
+	u[int(reflect.Int16)*100] = UMArray[int16]
+	u[int(reflect.Int32)*100] = UMArray[int32]
+	u[int(reflect.Int)*100] = UMArray[int]
+	u[int(reflect.Int64)*100] = UMArray[int64]
+}
+
+func UseUnSignedNumerics(u UnMarshallers) {
+	u[int(reflect.Uint8)] = UMPrimitive[uint8]
+	u[int(reflect.Uint16)] = UMPrimitive[uint16]
+	u[int(reflect.Uint32)] = UMPrimitive[uint32]
+	u[int(reflect.Uint)] = UMPrimitive[uint]
+	u[int(reflect.Uint64)] = UMPrimitive[uint64]
+	u[int(reflect.Uint8)*100] = UMArray[uint8]
+	u[int(reflect.Uint16)*100] = UMArray[uint16]
+	u[int(reflect.Uint32)*100] = UMArray[uint32]
+	u[int(reflect.Uint)*100] = UMArray[uint]
+	u[int(reflect.Uint64)*100] = UMArray[uint64]
+}
+
+func UseFloatingPoints(u UnMarshallers) {
+	u[int(reflect.Float32)] = UMPrimitive[float32]
+	u[int(reflect.Float64)] = UMPrimitive[float64]
+	u[int(reflect.Float32)*100] = UMArray[float32]
+	u[int(reflect.Float64)*100] = UMArray[float64]
+}
+
+func UsetOtherPrimitives(u UnMarshallers) {
+	u[int(reflect.Bool)] = UMPrimitive[bool]
+	u[int(reflect.String)] = UMPrimitive[string]
+	u[int(reflect.Bool)*100] = UMArray[bool]
+	u[int(reflect.String)*100] = UMArray[string]
+}
+
+func UsetStructs(u UnMarshallers) {
+	u[int(reflect.Struct)] = UMStruct
+	u[int(reflect.Struct)*100] = UMStructArray
+}
+
+func UseMaps(u UnMarshallers) {
+	u[int(reflect.Map)] = UMMap
+	u[int(reflect.Map)*100] = UMMapArray
+}
+
+func UsePointers(u UnMarshallers) {
+	u[int(reflect.Pointer)] = UMPointer
+	u[int(reflect.Pointer)*100] = UMPointerArray
+}
+
+func UserSlices(u UnMarshallers) {
+	u[int(reflect.Slice)*100] = UMSlice
+}
+
 func init() {
-	_unmarshallers = make(map[int]func(data map[string]any, field reflect.StructField, reflect reflect.Value, pointerDepth int) error)
-	_unmarshallers[int(reflect.Int8)] = UnmarshalPrimitive[int8]
-	_unmarshallers[int(reflect.Int16)] = UnmarshalPrimitive[int16]
-	_unmarshallers[int(reflect.Int32)] = UnmarshalPrimitive[int32]
-	_unmarshallers[int(reflect.Int)] = UnmarshalPrimitive[int]
-	_unmarshallers[int(reflect.Int64)] = UnmarshalPrimitive[int64]
+	_u = make(map[int]func(d Data, f Field, v Value, rc RC) error)
+	UseSignedNumerics(_u)
+	UseUnSignedNumerics(_u)
+	UseFloatingPoints(_u)
+	UsetOtherPrimitives(_u)
+	UsetStructs(_u)
+	UseMaps(_u)
+	UsePointers(_u)
+	UserSlices(_u)
+}
 
-	_unmarshallers[int(reflect.Uint8)] = UnmarshalPrimitive[uint8]
-	_unmarshallers[int(reflect.Uint16)] = UnmarshalPrimitive[uint16]
-	_unmarshallers[int(reflect.Uint32)] = UnmarshalPrimitive[uint32]
-	_unmarshallers[int(reflect.Uint)] = UnmarshalPrimitive[uint]
-	_unmarshallers[int(reflect.Uint64)] = UnmarshalPrimitive[uint64]
+func (rc *RC) Len() int {
+	return int(*rc)
+}
 
-	_unmarshallers[int(reflect.Float32)] = UnmarshalPrimitive[float32]
-	_unmarshallers[int(reflect.Float64)] = UnmarshalPrimitive[float64]
-	_unmarshallers[int(reflect.Bool)] = UnmarshalPrimitive[bool]
-	_unmarshallers[int(reflect.String)] = UnmarshalPrimitive[string]
-
-	_unmarshallers[int(reflect.Int8)*100] = UnmarshalPrimitiveSlice[int8]
-	_unmarshallers[int(reflect.Int16)*100] = UnmarshalPrimitiveSlice[int16]
-	_unmarshallers[int(reflect.Int32)*100] = UnmarshalPrimitiveSlice[int32]
-	_unmarshallers[int(reflect.Int)*100] = UnmarshalPrimitiveSlice[int]
-	_unmarshallers[int(reflect.Int64)*100] = UnmarshalPrimitiveSlice[int64]
-
-	_unmarshallers[int(reflect.Uint8)*100] = UnmarshalPrimitiveSlice[uint8]
-	_unmarshallers[int(reflect.Uint16)*100] = UnmarshalPrimitiveSlice[uint16]
-	_unmarshallers[int(reflect.Uint32)*100] = UnmarshalPrimitiveSlice[uint32]
-	_unmarshallers[int(reflect.Uint)*100] = UnmarshalPrimitiveSlice[uint]
-	_unmarshallers[int(reflect.Uint64)*100] = UnmarshalPrimitiveSlice[uint64]
-
-	_unmarshallers[int(reflect.Float32)*100] = UnmarshalPrimitiveSlice[float32]
-	_unmarshallers[int(reflect.Float64)*100] = UnmarshalPrimitiveSlice[float64]
-	_unmarshallers[int(reflect.Bool)*100] = UnmarshalPrimitiveSlice[bool]
-	_unmarshallers[int(reflect.String)*100] = UnmarshalPrimitiveSlice[string]
-
-	_unmarshallers[int(reflect.Struct)] = UnmarshalMessage
-	_unmarshallers[int(reflect.Struct)*100] = UnmarshalMessageList
-
-	_unmarshallers[int(reflect.Pointer)] = UnmarshalPointer
-	_unmarshallers[int(reflect.Pointer)*100] = UnmarshalPointerSlice
-
-	_unmarshallers[int(reflect.Map)] = UnmarshalMessageMap
-	_unmarshallers[int(reflect.Map)*100] = UnmarshalMessageMapList
-	_unmarshallers[int(reflect.Slice)*100] = UnmarshalSlice
+func (rc *RC) Incr() RC {
+	return RC(*rc + 1)
 }
 
 func Protect(err *error) {
@@ -64,324 +104,6 @@ func Protect(err *error) {
 		}
 		*err = fmt.Errorf("%v", r)
 	}
-}
-
-func UnmarshalPrimitive[T any](d map[string]any, f reflect.StructField, v reflect.Value, pointerDepth int) (error error) {
-	defer Protect(&error)
-	value, ok := d[GetFieldName(f)]
-	if !ok {
-		return nil
-	}
-	if value == nil {
-		return nil
-	}
-	kind := reflect.ValueOf(new(T)).Elem().Kind()
-	output, err := _convertors[kind](value)
-	if err != nil {
-		return err
-	}
-	Set(output.(T), v, pointerDepth)
-	return nil
-}
-
-func UnmarshalPrimitiveSlice[T any](d map[string]any, f reflect.StructField, v reflect.Value, pointerDepth int) (error error) {
-	defer Protect(&error)
-	value, ok := d[GetFieldName(f)]
-	if !ok {
-		return nil
-	}
-	if value == nil {
-		return nil
-	}
-	list, ok := value.([]any)
-	if !ok {
-		return fmt.Errorf("expected list by found %T", value)
-	}
-	kind := reflect.ValueOf(new(T)).Elem().Kind()
-	slice := make([]T, 0)
-	for _, item := range list {
-		value, err := _convertors[kind](item)
-		if err != nil {
-			return err
-		}
-		slice = append(slice, value.(T))
-	}
-	Set(slice, v, pointerDepth)
-	return nil
-}
-
-func Set(value any, v reflect.Value, refrenceDepth int) {
-	if refrenceDepth != 0 {
-		pointerType := reflect.TypeOf(value)
-		pointerValue := reflect.New(pointerType)
-		pointerValue.Elem().Set(reflect.ValueOf(reflect.ValueOf(&value).Elem().Interface()))
-		for i := 1; i < refrenceDepth; i++ {
-			pointerType = reflect.PointerTo(pointerType)
-			temp := reflect.New(pointerType)
-			temp.Elem().Set(pointerValue)
-			pointerValue = temp
-		}
-		v.Set(pointerValue)
-		return
-	}
-	v.Set(reflect.ValueOf(value))
-}
-
-func UnmarshalMessage(d map[string]any, f reflect.StructField, v reflect.Value, pointerDepth int) (error error) {
-	defer Protect(&error)
-	value, ok := d[GetFieldName(f)]
-	if !ok {
-		return nil
-	}
-	if value == nil {
-		return nil
-	}
-	if f.Type == reflect.TypeOf(value) {
-		v.Set(reflect.ValueOf(value))
-		return nil
-	}
-	valueRaw, ok := value.(map[string]any)
-	if !ok {
-		return fmt.Errorf("expected object by found %T", value)
-	}
-	message := reflect.New(f.Type)
-	messageInterface := message.Interface()
-	err := Unmarshal(valueRaw, messageInterface)
-	if err != nil {
-		return error
-	}
-	Set(message.Elem().Interface(), v, pointerDepth)
-	return nil
-}
-
-func UnmarshalMessageList(d map[string]any, f reflect.StructField, v reflect.Value, pointerDepth int) (error error) {
-	defer Protect(&error)
-	value, ok := d[GetFieldName(f)]
-	if !ok {
-		return nil
-	}
-	if value == nil {
-		return nil
-	}
-	if f.Type == reflect.TypeOf(value) {
-		v.Set(reflect.ValueOf(value))
-		return nil
-	}
-	list, ok := value.([]any)
-	if !ok {
-		return fmt.Errorf("expected list by found %T", value)
-	}
-	slice := reflect.MakeSlice(reflect.SliceOf(f.Type.Elem()), 0, 0)
-	for _, item := range list {
-		if f.Type == reflect.TypeOf(item) {
-			slice = reflect.Append(slice, reflect.ValueOf(item))
-		}
-		valueRaw, ok := item.(map[string]any)
-		if !ok {
-			return fmt.Errorf("expected object by found %T", value)
-		}
-		message := reflect.New(f.Type.Elem())
-		err := Unmarshal(valueRaw, message.Interface())
-		if err != nil {
-			return err
-		}
-		slice = reflect.Append(slice, message.Elem())
-	}
-	v.Set(slice)
-	return nil
-}
-
-func UnmarshalMessageMap(d map[string]any, f reflect.StructField, v reflect.Value, pointerDepth int) (error error) {
-	defer Protect(&error)
-	value, ok := d[GetFieldName(f)]
-	if !ok {
-		return nil
-	}
-	if value == nil {
-		return nil
-	}
-	valueRaw, ok := value.(map[string]any)
-	if !ok {
-		return fmt.Errorf("expected object by found %T", value)
-	}
-	message := reflect.MapOf(f.Type.Key(), f.Type.Elem())
-	mapper := reflect.MakeMap(message)
-	for key, value := range valueRaw {
-
-		kind := GetKindRaw(f.Type.Elem().Kind())
-		switch kind {
-		case int(reflect.Struct):
-			{
-				val := reflect.New(f.Type.Elem())
-				err := Unmarshal(value.(map[string]any), val.Interface())
-				if err != nil {
-					return err
-				}
-				mapper.SetMapIndex(reflect.ValueOf(key), val.Elem())
-
-			}
-		default:
-			{
-				mapper.SetMapIndex(reflect.ValueOf(key), reflect.ValueOf(value))
-			}
-		}
-	}
-	Set(mapper.Interface(), v, pointerDepth)
-	return nil
-}
-
-func UnmarshalMessageMapList(d map[string]any, f reflect.StructField, v reflect.Value, pointerDepth int) (error error) {
-	defer Protect(&error)
-	value, ok := d[GetFieldName(f)]
-	if !ok {
-		return nil
-	}
-	if value == nil {
-		return nil
-	}
-	valueRaw, ok := value.([]any)
-	if !ok {
-		return fmt.Errorf("expected object by found %T", value)
-	}
-	slice := reflect.MakeSlice(reflect.SliceOf(f.Type.Elem()), 0, 0)
-	for _, item := range valueRaw {
-		mapper := reflect.MakeMap(reflect.MapOf(f.Type.Elem().Key(), f.Type.Elem().Elem()))
-		for key, value := range item.(map[string]any) {
-
-			kind := GetKindRaw(f.Type.Elem().Kind())
-			switch kind {
-			case int(reflect.Struct):
-				{
-					val := reflect.New(f.Type.Elem())
-					err := Unmarshal(value.(map[string]any), val.Interface())
-					if err != nil {
-						return err
-					}
-					mapper.SetMapIndex(reflect.ValueOf(key), val.Elem())
-
-				}
-			default:
-				{
-					mapper.SetMapIndex(reflect.ValueOf(key), reflect.ValueOf(value))
-				}
-			}
-		}
-		slice = reflect.Append(slice, mapper)
-	}
-
-	v.Set(slice)
-	return nil
-}
-
-func CreateSlice(data any, dimensions int, baseType reflect.Type, arrayType reflect.Type, referenceCount int, iteration int) (*reflect.Value, error) {
-	dataValue := reflect.ValueOf(data)
-	switch dataValue.Kind() {
-	case reflect.Map:
-		{
-			baseValue := reflect.New(baseType)
-			switch baseValue.Kind() {
-			case reflect.Map, reflect.Interface:
-				{
-					return &dataValue, nil
-				}
-			default:
-				{
-					err := Unmarshal(data.(map[string]any), baseValue.Interface())
-					if err != nil {
-						return nil, err
-					}
-					output := baseValue.Elem()
-					return &output, nil
-				}
-			}
-		}
-	case reflect.Slice:
-		{
-			sliceType := reflect.SliceOf(arrayType)
-			for i := 0; i < dimensions-iteration; i++ {
-				sliceType = reflect.SliceOf(sliceType)
-			}
-			slice := reflect.MakeSlice(sliceType, 0, 0)
-			for i := 0; i < dataValue.Len(); i++ {
-				value := dataValue.Index(i).Interface()
-				next, err := CreateSlice(value, dimensions, baseType, arrayType, referenceCount, iteration+1)
-				if err != nil {
-					return nil, err
-				}
-				v := reflect.New(arrayType)
-				Set(next.Interface(), v.Elem(), referenceCount)
-				slice = reflect.Append(slice, v.Elem())
-			}
-			return &slice, nil
-		}
-	default:
-		{
-			return &dataValue, nil
-		}
-	}
-}
-
-func UnmarshalSlice(d map[string]any, f reflect.StructField, v reflect.Value, pointerDepth int) (error error) {
-	defer Protect(&error)
-	value, ok := d[GetFieldName(f)]
-	if !ok {
-		return nil
-	}
-	if value == nil {
-		return nil
-	}
-	baseType, dimensions := GetDimensions(f)
-	tracker, err := CreateSlice(value, dimensions, baseType, baseType, 0, 0)
-	if err != nil {
-		return err
-	}
-	Set(tracker.Interface(), v, pointerDepth)
-	return nil
-}
-
-func UnmarshalPointer(d map[string]any, f reflect.StructField, v reflect.Value, pointerDepth int) (error error) {
-	defer Protect(&error)
-	f.Type = f.Type.Elem()
-	return _unmarshallers[GetKindRaw(f.Type.Kind())](d, f, v, pointerDepth+1)
-}
-
-func GetDimensions(f reflect.StructField) (reflect.Type, int) {
-	dimensions := 0
-	t := f.Type.Elem()
-	for t.Kind() == reflect.Slice {
-		t = t.Elem()
-		dimensions++
-	}
-	return t, dimensions
-}
-
-func GetRferenceCount(f reflect.StructField) (reflect.Type, int) {
-	referenceCount := 0
-	t := f.Type.Elem()
-	for t.Kind() == reflect.Pointer {
-		t = t.Elem()
-		referenceCount++
-	}
-	return t, referenceCount
-}
-
-func UnmarshalPointerSlice(d map[string]any, f reflect.StructField, v reflect.Value, pointerDepth int) (error error) {
-	defer Protect(&error)
-	value, ok := d[GetFieldName(f)]
-	if !ok {
-		return nil
-	}
-	if value == nil {
-		return nil
-	}
-	baseType, dimensions := GetDimensions(f)
-	pointerType, referenceCount := GetRferenceCount(f)
-	tracker, err := CreateSlice(value, dimensions, pointerType, baseType, referenceCount, 0)
-	if err != nil {
-		return err
-	}
-	Set(tracker.Interface(), v, pointerDepth)
-	return nil
 }
 
 func GetKind(f reflect.StructField) int {
@@ -407,6 +129,312 @@ func GetFieldName(field reflect.StructField) string {
 	return name
 }
 
+func HasValue(v any, b bool) bool {
+	return b && v != nil
+}
+
+func MustBe[T any](v any) (T, error) {
+	value, ok := v.(T)
+	if !ok {
+		return value, fmt.Errorf("expected %T by found %T", value, v)
+	}
+	return value, nil
+}
+
+func KindOf[T any]() reflect.Kind {
+	return reflect.ValueOf(new(T)).Elem().Kind()
+}
+
+func IsPointer(rc RC) bool {
+	return rc > 0
+}
+
+func SameType(f Field, v any) bool {
+	return f.Type == reflect.TypeOf(v)
+}
+
+func GetDimensions(f reflect.StructField) (reflect.Type, int) {
+	dimensions := 0
+	t := f.Type.Elem()
+	for t.Kind() == reflect.Slice {
+		t = t.Elem()
+		dimensions++
+	}
+	return t, dimensions
+}
+
+func GetRferenceCount(f reflect.StructField) (reflect.Type, RC) {
+	referenceCount := 0
+	t := f.Type.Elem()
+	for t.Kind() == reflect.Pointer {
+		t = t.Elem()
+		referenceCount++
+	}
+	return t, RC(referenceCount)
+}
+
+func CreateSlice(value any, dimensions int, typeOfElem reflect.Type, typeOfArray reflect.Type, rc RC, itr int) (*reflect.Value, error) {
+	dataValue := reflect.ValueOf(value)
+	switch dataValue.Kind() {
+	case reflect.Map:
+		{
+			valueOfElem := reflect.New(typeOfElem)
+			switch valueOfElem.Elem().Kind() {
+			case reflect.Map, reflect.Interface:
+				{
+					return &dataValue, nil
+				}
+			default:
+				{
+					err := Unmarshal(value.(map[string]any), valueOfElem.Interface())
+					if err != nil {
+						return nil, err
+					}
+					output := valueOfElem.Elem()
+					return &output, nil
+				}
+			}
+		}
+	case reflect.Slice:
+		{
+			typeOfSlice := reflect.SliceOf(typeOfArray)
+			for i := 0; i < dimensions-itr; i++ {
+				typeOfSlice = reflect.SliceOf(typeOfSlice)
+			}
+			valueOfSlice := reflect.MakeSlice(typeOfSlice, 0, 0)
+			for i := 0; i < dataValue.Len(); i++ {
+				ref := dataValue.Index(i).Interface()
+				next, err := CreateSlice(ref, dimensions, typeOfElem, typeOfArray, rc, itr+1)
+				if err != nil {
+					return nil, err
+				}
+				v := reflect.New(typeOfArray)
+				Set(next.Interface(), v.Elem(), rc)
+				valueOfSlice = reflect.Append(valueOfSlice, v.Elem())
+			}
+			return &valueOfSlice, nil
+		}
+	default:
+		{
+			return &dataValue, nil
+		}
+	}
+}
+
+func Set(value any, v Value, rc RC) {
+	if IsPointer(rc) {
+		typeOfP := reflect.TypeOf(value)
+		valueOfP := reflect.New(typeOfP)
+		valueOfP.Elem().Set(reflect.ValueOf(reflect.ValueOf(&value).Elem().Interface()))
+		for i := 1; i < rc.Len(); i++ {
+			typeOfP = reflect.PointerTo(typeOfP)
+			tmp := reflect.New(typeOfP)
+			tmp.Elem().Set(valueOfP)
+			valueOfP = tmp
+		}
+		v.Set(valueOfP)
+		return
+	}
+	v.Set(reflect.ValueOf(value))
+}
+
+func UMPrimitive[T any](d Data, f Field, v Value, rc RC) (_err error) {
+	defer Protect(&_err)
+	entry, ok := d[GetFieldName(f)]
+	if !HasValue(entry, ok) {
+		return nil
+	}
+	prod, err := _convertors[KindOf[T]()](entry)
+	if err != nil {
+		return err
+	}
+	Set(prod.(T), v, rc)
+	return nil
+}
+
+func UMArray[T any](d Data, f Field, v Value, rc RC) (_err error) {
+	defer Protect(&_err)
+	entry, ok := d[GetFieldName(f)]
+	if !HasValue(entry, ok) {
+		return nil
+	}
+	values, err := MustBe[[]any](entry)
+	if err != nil {
+		return err
+	}
+	kind := KindOf[T]()
+	slice := make([]T, 0)
+	for _, item := range values {
+		prod, err := _convertors[kind](item)
+		if err != nil {
+			return err
+		}
+		slice = append(slice, prod.(T))
+	}
+	Set(slice, v, rc)
+	return nil
+}
+
+func UMStruct(d Data, f Field, v Value, rc RC) (_err error) {
+	defer Protect(&_err)
+	entry, ok := d[GetFieldName(f)]
+	if !HasValue(entry, ok) {
+		return nil
+	}
+	if SameType(f, entry) {
+		v.Set(reflect.ValueOf(entry))
+		return nil
+	}
+	value, err := MustBe[map[string]any](entry)
+	if err != nil {
+		return err
+	}
+	ref := reflect.New(f.Type)
+	err = Unmarshal(value, ref.Interface())
+	if err != nil {
+		return _err
+	}
+	Set(ref.Elem().Interface(), v, rc)
+	return nil
+}
+
+func UMStructArray(d Data, f Field, v Value, rc RC) (_err error) {
+	defer Protect(&_err)
+	entry, ok := d[GetFieldName(f)]
+	if !HasValue(entry, ok) {
+		return nil
+	}
+	if SameType(f, entry) {
+		v.Set(reflect.ValueOf(entry))
+		return nil
+	}
+	values, err := MustBe[[]any](entry)
+	if err != nil {
+		return err
+	}
+	slice := reflect.MakeSlice(reflect.SliceOf(f.Type.Elem()), 0, 0)
+	for _, item := range values {
+		if SameType(f, item) {
+			slice = reflect.Append(slice, reflect.ValueOf(item))
+			continue
+		}
+		value, err := MustBe[map[string]any](item)
+		if err != nil {
+			return err
+		}
+		ref := reflect.New(f.Type.Elem())
+		err = Unmarshal(value, ref.Interface())
+		if err != nil {
+			return err
+		}
+		slice = reflect.Append(slice, ref.Elem())
+	}
+	v.Set(slice)
+	return nil
+}
+
+func CreateMap(value Data, tyepOfKey reflect.Type, typeOfValue reflect.Type) (*reflect.Value, error) {
+	typeOfMap := reflect.MapOf(tyepOfKey, typeOfValue)
+	valueOfMap := reflect.MakeMap(typeOfMap)
+	for key, value := range value {
+		kind := GetKindRaw(typeOfValue.Kind())
+		switch kind {
+		case int(reflect.Struct):
+			{
+				ref := reflect.New(typeOfValue)
+				err := Unmarshal(value.(map[string]any), ref.Interface())
+				if err != nil {
+					return nil, err
+				}
+				valueOfMap.SetMapIndex(reflect.ValueOf(key), ref.Elem())
+			}
+		default:
+			{
+				valueOfMap.SetMapIndex(reflect.ValueOf(key), reflect.ValueOf(value))
+			}
+		}
+	}
+	return &valueOfMap, nil
+}
+
+func UMMap(d Data, f Field, v Value, rc RC) (_err error) {
+	defer Protect(&_err)
+	entry, ok := d[GetFieldName(f)]
+	if !HasValue(entry, ok) {
+		return nil
+	}
+	value, err := MustBe[map[string]any](entry)
+	if err != nil {
+		return err
+	}
+	prod, err := CreateMap(value, f.Type.Key(), f.Type.Elem())
+	if err != nil {
+		return err
+	}
+	Set(prod.Interface(), v, rc)
+	return nil
+}
+
+func UMMapArray(d Data, f Field, v Value, rc RC) (_err error) {
+	defer Protect(&_err)
+	entry, ok := d[GetFieldName(f)]
+	if !HasValue(entry, ok) {
+		return nil
+	}
+	values, err := MustBe[[]any](entry)
+	if err != nil {
+		return err
+	}
+	slice := reflect.MakeSlice(reflect.SliceOf(f.Type.Elem()), 0, 0)
+	for _, item := range values {
+		prod, err := CreateMap(item.(map[string]any), f.Type.Elem().Key(), f.Type.Elem().Elem())
+		if err != nil {
+			return err
+		}
+		slice = reflect.Append(slice, *prod)
+	}
+
+	v.Set(slice)
+	return nil
+}
+
+func UMSlice(d Data, f Field, v Value, rc RC) (_err error) {
+	defer Protect(&_err)
+	value, ok := d[GetFieldName(f)]
+	if !HasValue(value, ok) {
+		return nil
+	}
+	baseType, dimensions := GetDimensions(f)
+	slice, err := CreateSlice(value, dimensions, baseType, baseType, 0, 0)
+	if err != nil {
+		return err
+	}
+	Set(slice.Interface(), v, rc)
+	return nil
+}
+
+func UMPointer(d Data, f Field, v Value, rc RC) (_err error) {
+	defer Protect(&_err)
+	f.Type = f.Type.Elem()
+	return _u[GetKindRaw(f.Type.Kind())](d, f, v, rc.Incr())
+}
+
+func UMPointerArray(d Data, f Field, v Value, rc RC) (error error) {
+	defer Protect(&error)
+	value, ok := d[GetFieldName(f)]
+	if !HasValue(value, ok) {
+		return nil
+	}
+	baseType, dimensions := GetDimensions(f)
+	pointerType, referenceCount := GetRferenceCount(f)
+	slice, err := CreateSlice(value, dimensions, pointerType, baseType, referenceCount, 0)
+	if err != nil {
+		return err
+	}
+	Set(slice.Interface(), v, rc)
+	return nil
+}
+
 func Unmarshal(data map[string]any, message any) error {
 	p := reflect.TypeOf(message).Elem()
 	v := reflect.ValueOf(message).Elem()
@@ -414,7 +442,7 @@ func Unmarshal(data map[string]any, message any) error {
 	for i := 0; i < n; i++ {
 		field := p.Field(i)
 		kind := GetKind(field)
-		err := _unmarshallers[kind](data, field, v.Field(i), 0)
+		err := _u[kind](data, field, v.Field(i), 0)
 		if err != nil {
 			return err
 		}

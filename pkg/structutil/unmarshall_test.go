@@ -92,7 +92,7 @@ type (
 		Boolean bool
 	}
 	ArrayMap struct {
-		Number  []*map[string]any
+		Number  []map[string]any
 		Text    string
 		Boolean bool
 	}
