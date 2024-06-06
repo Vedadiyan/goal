@@ -245,6 +245,19 @@ func CreateMap(value Data, tyepOfKey reflect.Type, typeOfValue reflect.Type) (*r
 	return &valueOfMap, nil
 }
 
+func CreateStruct(item any, f reflect.Type) (*reflect.Value, error) {
+	value, err := MustBe[map[string]any](item)
+	if err != nil {
+		return nil, err
+	}
+	ref := reflect.New(f)
+	err = Unmarshal(value, ref.Interface())
+	if err != nil {
+		return nil, err
+	}
+	return &ref, nil
+}
+
 func Set(value any, v Value, rc RC) {
 	if IsPointer(rc) {
 		typeOfP := reflect.TypeOf(value)
@@ -309,16 +322,11 @@ func UMStruct(d Data, f Field, v Value, rc RC) (_err error) {
 		v.Set(reflect.ValueOf(entry))
 		return nil
 	}
-	value, err := MustBe[map[string]any](entry)
+	prod, err := CreateStruct(entry, f.Type)
 	if err != nil {
 		return err
 	}
-	ref := reflect.New(f.Type)
-	err = Unmarshal(value, ref.Interface())
-	if err != nil {
-		return _err
-	}
-	Set(ref.Elem().Interface(), v, rc)
+	Set(prod.Elem().Interface(), v, rc)
 	return nil
 }
 
@@ -342,16 +350,11 @@ func UMStructArray(d Data, f Field, v Value, rc RC) (_err error) {
 			slice = reflect.Append(slice, reflect.ValueOf(item))
 			continue
 		}
-		value, err := MustBe[map[string]any](item)
+		prod, err := CreateStruct(item, f.Type.Elem())
 		if err != nil {
 			return err
 		}
-		ref := reflect.New(f.Type.Elem())
-		err = Unmarshal(value, ref.Interface())
-		if err != nil {
-			return err
-		}
-		slice = reflect.Append(slice, ref.Elem())
+		slice = reflect.Append(slice, prod.Elem())
 	}
 	v.Set(slice)
 	return nil
