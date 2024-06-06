@@ -221,6 +221,30 @@ func CreateSlice(value any, dimensions int, typeOfElem reflect.Type, typeOfArray
 	}
 }
 
+func CreateMap(value Data, tyepOfKey reflect.Type, typeOfValue reflect.Type) (*reflect.Value, error) {
+	typeOfMap := reflect.MapOf(tyepOfKey, typeOfValue)
+	valueOfMap := reflect.MakeMap(typeOfMap)
+	for key, value := range value {
+		kind := GetKindRaw(typeOfValue.Kind())
+		switch kind {
+		case int(reflect.Struct):
+			{
+				ref := reflect.New(typeOfValue)
+				err := Unmarshal(value.(map[string]any), ref.Interface())
+				if err != nil {
+					return nil, err
+				}
+				valueOfMap.SetMapIndex(reflect.ValueOf(key), ref.Elem())
+			}
+		default:
+			{
+				valueOfMap.SetMapIndex(reflect.ValueOf(key), reflect.ValueOf(value))
+			}
+		}
+	}
+	return &valueOfMap, nil
+}
+
 func Set(value any, v Value, rc RC) {
 	if IsPointer(rc) {
 		typeOfP := reflect.TypeOf(value)
@@ -331,30 +355,6 @@ func UMStructArray(d Data, f Field, v Value, rc RC) (_err error) {
 	}
 	v.Set(slice)
 	return nil
-}
-
-func CreateMap(value Data, tyepOfKey reflect.Type, typeOfValue reflect.Type) (*reflect.Value, error) {
-	typeOfMap := reflect.MapOf(tyepOfKey, typeOfValue)
-	valueOfMap := reflect.MakeMap(typeOfMap)
-	for key, value := range value {
-		kind := GetKindRaw(typeOfValue.Kind())
-		switch kind {
-		case int(reflect.Struct):
-			{
-				ref := reflect.New(typeOfValue)
-				err := Unmarshal(value.(map[string]any), ref.Interface())
-				if err != nil {
-					return nil, err
-				}
-				valueOfMap.SetMapIndex(reflect.ValueOf(key), ref.Elem())
-			}
-		default:
-			{
-				valueOfMap.SetMapIndex(reflect.ValueOf(key), reflect.ValueOf(value))
-			}
-		}
-	}
-	return &valueOfMap, nil
 }
 
 func UMMap(d Data, f Field, v Value, rc RC) (_err error) {
