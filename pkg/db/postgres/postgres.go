@@ -141,7 +141,7 @@ func Handle(dsn string, _type Type, sql string, arguments map[string]any) ([]map
 			if err != nil {
 				return nil, err
 			}
-			res, err := pool.Exec(context.TODO(), cmd, nil)
+			res, err := pool.Exec(context.TODO(), cmd, arguments)
 			if err != nil {
 				return nil, err
 			}
@@ -157,7 +157,7 @@ func Handle(dsn string, _type Type, sql string, arguments map[string]any) ([]map
 			if err != nil {
 				return nil, err
 			}
-			res, err := pool.Query(context.TODO(), cmd, make(map[string]any))
+			res, err := pool.Query(context.TODO(), cmd, arguments)
 			if err != nil {
 				return nil, err
 			}

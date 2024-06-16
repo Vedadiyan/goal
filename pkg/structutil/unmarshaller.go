@@ -71,6 +71,9 @@ func UseMaps(u UnMarshallers) {
 func UsePointers(u UnMarshallers) {
 	u[int(reflect.Pointer)] = UMPointer
 	u[int(reflect.Pointer)*100] = UMPointerArray
+	u[int(reflect.Interface)] = func(d Data, f Field, v Value, rc RC) error {
+		return nil
+	}
 }
 
 func UserSlices(u UnMarshallers) {

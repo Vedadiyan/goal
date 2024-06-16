@@ -40,22 +40,39 @@ func Build(str string, args map[string]any) (string, error) {
 		_template = template.New(hash)
 		_template.Funcs(map[string]any{
 			"Sanitize": func(value any) string {
+				if v, ok := value.(*any); ok {
+					value = *v
+				}
 				val, _err := sanitize.SanitizeSQL("$1", standardize(value))
 				err = _err
 				return val
 			},
-			"DateRange": func(from string, to string) string {
-				_from, _err := sanitize.SanitizeSQL("$1", standardize(from))
-				if err != nil {
-					err = _err
-					return ""
+			"DateRange": func(from *any, to *any) string {
+				var _from string
+				var _to string
+				if from != nil {
+					from, _err := sanitize.SanitizeSQL("$1", standardize(*from))
+					if err != nil {
+						err = _err
+						return ""
+					}
+					_from = from
 				}
-				_to, _err := sanitize.SanitizeSQL("$1", standardize(to))
-				if err != nil {
-					err = _err
-					return ""
+				if to != nil {
+					to, _err := sanitize.SanitizeSQL("$1", standardize(*to))
+					if err != nil {
+						err = _err
+						return ""
+					}
+					_to = to
 				}
-				return fmt.Sprintf("'[%s, %s]'::daterange", strings.ReplaceAll(_from, "'", ""), strings.ReplaceAll(_to, "'", ""))
+				return fmt.Sprintf("'[%s,%s]'::daterange", strings.ReplaceAll(_from, "'", ""), strings.ReplaceAll(_to, "'", ""))
+			},
+			"Index": func(data map[string]any, key string) any {
+				if v, ok := data[key]; ok {
+					return &v
+				}
+				return nil
 			},
 		})
 		_template, err := _template.Parse(str)
