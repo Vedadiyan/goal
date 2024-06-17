@@ -33,7 +33,14 @@ type ETCDBootstrapper struct {
 	url string
 }
 
-var _initializers sync.Pool
+var (
+	_initializers []any
+	rwMut         sync.RWMutex
+)
+
+func init() {
+	_initializers = make([]any, 0)
+}
 
 func (k KeyValue) GetStringValue(key string) (string, error) {
 	if value, ok := k[key]; ok {
@@ -59,7 +66,9 @@ func (o Object) Init(value any) error {
 	return config.INVALID_OBJECT
 }
 func Register(initializer Initializer) {
-	_initializers.Put(initializer)
+	rwMut.Lock()
+	defer rwMut.Unlock()
+	_initializers = append(_initializers, initializer)
 }
 func (configMapBootstrapper *ConfigMapBootstrapper) Bootstrap() error {
 	env := make(map[string]string)
@@ -69,11 +78,7 @@ func (configMapBootstrapper *ConfigMapBootstrapper) Bootstrap() error {
 
 	}
 
-	for {
-		value := _initializers.Get()
-		if value == nil {
-			break
-		}
+	for _, value := range _initializers {
 		initializer := value.(Initializer)
 		switch t := initializer.(type) {
 		case String:
@@ -116,11 +121,7 @@ func (etcdBootstrapper *ETCDBootstrapper) Bootstrap() error {
 	if err != nil {
 		return err
 	}
-	for {
-		value := _initializers.Get()
-		if value == nil {
-			break
-		}
+	for _, value := range _initializers {
 		initializer := value.(Initializer)
 		switch t := initializer.(type) {
 		case String:
