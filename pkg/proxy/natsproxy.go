@@ -2,6 +2,7 @@ package proxy
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/nats-io/nats.go"
@@ -13,9 +14,12 @@ import (
 type ProxyError string
 
 const (
-	_ENCODE_ERROR  ProxyError = ProxyError("encode error")
-	_DECODE_ERROR  ProxyError = ProxyError("decode error")
-	_GATEWAY_ERROR ProxyError = ProxyError("gateway error")
+	HEADER_STATUS = "X-Status"
+	HEADER_ERROR  = "X-Error"
+
+	_ERR_ENCODE    ProxyError = ProxyError("encode error")
+	_ERR_DECODE    ProxyError = ProxyError("decode error")
+	_ERROR_GATEWAY ProxyError = ProxyError("gateway error")
 )
 
 func (p ProxyError) Error() string {
@@ -32,21 +36,21 @@ type NATSProxy[TResponse proto.Message] struct {
 func (p NATSProxy[TResponse]) Send(request proto.Message) (*TResponse, error) {
 	enc, err := p.codec.Encode(p.namespace, request)
 	if err != nil {
-		return nil, _ENCODE_ERROR
+		return nil, _ERR_ENCODE
 	}
 	msg, err := p.conn.Request(p.namespace, enc, time.Hour)
 	if err != nil {
-		return nil, _GATEWAY_ERROR
+		return nil, _ERROR_GATEWAY
 
 	}
-	status := msg.Header.Get("status")
-	if status != "SUCCESS" {
-		return nil, fmt.Errorf(`{"status": "%s", "message": "%s"}`, status, msg.Header.Get("error"))
+	status := msg.Header.Get(HEADER_STATUS)
+	if strings.HasPrefix(status, "5") || strings.HasPrefix(status, "4") {
+		return nil, fmt.Errorf(`{"status": "%s", "message": "%s"}`, status, msg.Header.Get(HEADER_ERROR))
 	}
 	res := p.new()
 	err = p.codec.Decode(p.namespace, msg.Data, res)
 	if err != nil {
-		return nil, _DECODE_ERROR
+		return nil, _ERR_DECODE
 	}
 	return &res, nil
 }
