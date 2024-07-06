@@ -585,7 +585,15 @@ func UnmarshalStringList(data map[string]any, field FieldDescriptorKind, reflect
 
 func UnmarshalStruct(data map[string]any, field FieldDescriptorKind, reflect ProtobufType) (error error) {
 	defer Protect(&error)
-	value, err := structpb.NewStruct(data[GetFieldName(field)].(map[string]any))
+	_value, ok := data[GetFieldName(field)]
+	if !ok {
+		return nil
+	}
+	data, ok = _value.((map[string]any))
+	if !ok {
+		return fmt.Errorf("expected object by found %T", _value)
+	}
+	value, err := structpb.NewStruct(data)
 	if err != nil {
 		return nil
 	}
