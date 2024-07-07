@@ -46,6 +46,7 @@ const (
 	Sint32Kind         Kind = 16
 	Sfixed64Kind       Kind = 17
 	Sint64Kind         Kind = 18
+	StructKind         Kind = 20
 	ListOfDoubleKind   Kind = 101
 	ListOfFloatKind    Kind = 102
 	ListOfInt64Kind    Kind = 103
@@ -65,7 +66,7 @@ const (
 	ListOfSfixed64Kind Kind = 117
 	ListOfSint64Kind   Kind = 118
 	MapKind            Kind = 119
-	StructKind         Kind = 120
+	StructListKind     Kind = 120
 )
 
 var (
@@ -140,6 +141,7 @@ func init() {
 	_unmarshallers[MapKind] = UnmarshalMessageMap
 
 	_unmarshallers[StructKind] = UnmarshalStruct
+	_unmarshallers[StructListKind] = UnmarshalStructList
 }
 
 func Protect(err *error) {
@@ -601,6 +603,40 @@ func UnmarshalStruct(data map[string]any, field FieldDescriptorKind, reflect Pro
 	return nil
 }
 
+func UnmarshalStructList(data map[string]any, field FieldDescriptorKind, reflect ProtobufType) (error error) {
+	defer Protect(&error)
+	value, ok := data[GetFieldName(field)]
+	if !ok {
+		return nil
+	}
+	if value == nil {
+		return nil
+	}
+	list, ok := value.([]any)
+	if !ok {
+		return fmt.Errorf("expected list by found %T", value)
+	}
+	v := reflect.Mutable(field).List()
+	for _, item := range list {
+		if item == nil {
+			v.Append(protoreflect.ValueOf(reflect.Get(field).List().NewElement().Message().Type().Zero()))
+			continue
+		}
+		data, ok := item.(map[string]any)
+		if !ok {
+			return fmt.Errorf("expected map[string]any by found %T", item)
+		}
+		value, err := structpb.NewStruct(data)
+		if err != nil {
+			return nil
+		}
+		v.Append(protoreflect.ValueOfMessage(value.ProtoReflect()))
+
+	}
+	reflect.Set(field, protoreflect.ValueOf(v))
+	return nil
+}
+
 func UnmarshalMessage(data map[string]any, field FieldDescriptorKind, reflect ProtobufType) (error error) {
 	defer Protect(&error)
 	value, ok := data[GetFieldName(field)]
@@ -697,11 +733,15 @@ func UnmarshalMessageList(data map[string]any, field FieldDescriptorKind, reflec
 func GetKind(f FieldDescriptorKind) Kind {
 	field := f.(protoreflect.FieldDescriptor)
 	if field.IsList() {
-		return Kind(field.Kind() + 100)
+		return Kind(getKind(field) + 100)
 	}
 	if field.IsMap() {
 		return MapKind
 	}
+	return getKind(field)
+}
+
+func getKind(field protoreflect.FieldDescriptor) Kind {
 	message := field.Message()
 	if message != nil {
 		switch message.FullName() {

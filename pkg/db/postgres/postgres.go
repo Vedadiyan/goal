@@ -2,14 +2,11 @@ package postgres
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/vedadiyan/goal/pkg/db/postgres/sanitize"
 	"github.com/vedadiyan/goal/pkg/di"
@@ -82,39 +79,7 @@ func (pool *Pool) Query(ctx context.Context, sql string, arguments map[string]an
 		}
 		row := make(map[string]any)
 		for i := 0; i < len(fields); i++ {
-			val := value[i]
-			switch t := val.(type) {
-			case pgtype.Range[any]:
-				{
-					out := []any{
-						fmt.Sprintf("%v", t.Lower),
-						fmt.Sprintf("%v", t.Upper),
-					}
-					row[fields[i].Name] = out
-				}
-			default:
-				{
-					oid := fields[i].DataTypeOID
-					if oid == 790 {
-						str := fmt.Sprintf("%v", val)
-						str = strings.Replace(str, "$", "", 1)
-						n, err := strconv.ParseFloat(str, 64)
-						if err != nil {
-							return nil, err
-						}
-						row[fields[i].Name] = n
-						continue
-					}
-					if oid == 114 {
-						err := Fix(value[i])
-						if err != nil {
-							return nil, err
-						}
-					}
-					row[fields[i].Name] = value[i]
-				}
-			}
-
+			row[fields[i].Name] = value[i]
 		}
 		rows = append(rows, row)
 	}
@@ -200,81 +165,4 @@ func Handle(dsn string, _type Type, sql string, arguments map[string]any) ([]map
 		}
 	}
 	return nil, fmt.Errorf("unsupported operation")
-}
-
-func Unmarshall(str string) (any, error) {
-	data := make(map[string]any)
-	err := json.Unmarshal([]byte(fmt.Sprintf(`{"root": %s}`, str)), &data)
-	if err != nil {
-		return nil, err
-	}
-	err = Fix(data)
-	if err != nil {
-		return nil, err
-	}
-	return data["root"], nil
-}
-
-// This is a temporary fix for PGX's inability to parse data as expected
-// TO DO: Refactor and fix issues
-func Fix(data any) error {
-	switch t := data.(type) {
-	case map[string]any:
-		{
-			data := t
-			for key, value := range data {
-				switch t := value.(type) {
-				case string:
-					{
-						if strings.HasPrefix(t, "$") {
-							str := strings.TrimPrefix(t, "$")
-							n, err := strconv.ParseFloat(str, 64)
-							if err != nil {
-								return err
-							}
-							data[key] = n
-							continue
-						}
-						if (strings.HasPrefix(t, "(") || strings.HasPrefix(t, "[")) && (strings.HasSuffix(t, ")") || strings.HasSuffix(t, "]")) {
-							segments := strings.Split(t, ",")
-							if len(segments) != 2 {
-								continue
-							}
-							left := strings.TrimPrefix(segments[0], "(")
-							left = strings.TrimPrefix(left, "[")
-							right := strings.TrimRight(segments[1], ")")
-							right = strings.TrimRight(right, "]")
-							data[key] = []any{left, right}
-						}
-					}
-				case []map[string]any:
-					{
-						for _, item := range t {
-							err := Fix(item)
-							if err != nil {
-								return err
-							}
-						}
-					}
-				case map[string]any:
-					{
-						err := Fix(t)
-						if err != nil {
-							return err
-						}
-					}
-				}
-			}
-		}
-	case []any:
-		{
-			for _, item := range t {
-				err := Fix(item)
-				if err != nil {
-					return err
-				}
-			}
-		}
-	}
-	return nil
 }
